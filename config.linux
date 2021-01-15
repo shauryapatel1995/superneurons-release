@@ -1,9 +1,9 @@
 CUDA_ROOT_DIR=/usr/local/cuda
-CUDNN_ROOT_DIR=/usr/local/cuda
-ZFP_ROOT_DIR=/home/shauryapatel1995/zfp
+CUDNN_ROOT_DIR=/cm/shared/apps/cudnn/8.0-cuda_11.1
+ZFP_ROOT_DIR=/home/shauryakamle/zfp
 
 LIBJPEG_INCLUDE_DIR = /usr/include/
 LIBJPEG_LIB_FILE = /usr/lib/x86_64-linux-gnu/libjpeg.so
 
 
-GLOG_ROOT=/usr/local/glog
+GLOG_ROOT=/usr/lib64/
