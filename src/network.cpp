@@ -162,7 +162,10 @@ void network_t<value_type>::forward_kernel(network_stage stage, base_layer_t<val
 
             // execution
             base_layer_t<value_type>* b = (base_layer_t<value_type>*) net_layers.find(layer_id)->second;
+	    
             *loss = b->forward(stage, &cublas_handle, &cudnn_handle, reg);
+	    // if(loss->size() > 0) 
+		//    printf("Loss at layer %d: %f\n", b->get_base_id(), loss->at(0));
             // update tensors
             mem_controller.update_tensor_state(layer_id, FORWARD, stage);
 

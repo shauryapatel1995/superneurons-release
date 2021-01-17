@@ -17,7 +17,7 @@
 #include <gpu_malloc.h>
 #include <util/lru.h>
 #include <cufft.h>
-
+#include "zfp.h"
 
 //#define BLASX_MALLOC
 
@@ -47,6 +47,8 @@ private:
     value_type*    compressed_gpu_ptr = NULL;       // If data is in gpu it can be compressed or uncompressed.
     cufftComplex*  freq_ptr = NULL;
     
+    zfp_field* field;
+    zfp_stream* zfp;
     size_t compressed_size;     
     size_t GPU_id;                               //this identifies the GPU RAM
     int layer_id;                                //this identifies the affilited layer
@@ -165,6 +167,14 @@ public:
         if(this->data_t == CONV_BUFF && this->data_t == DATA) {
             // Acquire and compress the space.
         }
+	// Set the compression data.
+	zfp_type type = zfp_type_float;
+        this->field = zfp_field_4d(this->gpu_ptr, type, this->N, this->C, this->H, this->W);
+
+        this->zfp = zfp_stream_open(NULL);                  // compressed stream and parameters
+        zfp->maxbits = 4096;
+        zfp_stream_set_rate(zfp, 16, type, 4, 0);
+       
 #else
         acquireSpaceCPU(n*c*h*w);
         acquireSpaceGPU(n*c*h*w);
@@ -213,6 +223,9 @@ public:
         if(cpu_ptr != NULL) cudaFreeHost(cpu_ptr);
         if(gpu_ptr != NULL) gpu_ptr = NULL;
         if(compressed_gpu_ptr != NULL) compressed_gpu_ptr = NULL;
+        
+	zfp_field_free(field);
+  	zfp_stream_close(zfp);
         checkCUDNN( cudnnDestroyTensorDescriptor(cudnn_tensor_desc) );
         cufftDestroy(fft_plan_f);
         cufftDestroy(fft_plan_b);
