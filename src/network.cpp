@@ -327,6 +327,7 @@ void network_t<value_type>::bsetup_kernel(base_layer_t<value_type>* b) {
 
 template <class value_type>
 void network_t<value_type>::test() {
+    printf("Starting test\n");
     assert( this->test_data_layer != NULL );
     assert( this->train_data_layer != NULL );
     //let's swap the head of data layer

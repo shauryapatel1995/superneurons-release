@@ -215,9 +215,10 @@ public:
     ~tensor_t() {
         if(cpu_ptr != NULL) cudaFreeHost(cpu_ptr);
         if(gpu_ptr != NULL) gpu_ptr = NULL;
-        if(compressed_gpu_ptr != NULL) compressed_gpu_ptr = NULL;
+        if(compressed_gpu_ptr != NULL) cudaFree(compressed_gpu_ptr);
         
-	zfp_field_free(field);
+        if(field != NULL) 
+		zfp_field_free(field);
   	zfp_stream_close(zfp);
         checkCUDNN( cudnnDestroyTensorDescriptor(cudnn_tensor_desc) );
         cufftDestroy(fft_plan_f);

@@ -161,9 +161,9 @@ void tensor_t<value_type>::compress() {
 	}
     } 
     // free gpu space
-     // freeSpaceGPU();
+     freeSpaceGPU(GPU_COM);
        
-     checkCudaErrors(cudaFree(this->gpu_ptr));
+     // checkCudaErrors(cudaFree(this->gpu_ptr));
      zfp_field_free(this->field); 
     // set the state to compressed.
      this->atomic_set_state(GPU_COM);
@@ -179,8 +179,8 @@ void tensor_t<value_type>::decompress() {
     // decompress the tensor. 
     size_t decompress_size = this->N * this->H * this->C * this->W;
     
-    // acquireSpaceGPU(decompress_size);	
-    cudaMalloc(&this->gpu_ptr, sizeof(float)*decompress_size);
+    acquireSpaceGPU(decompress_size);	
+    // cudaMalloc(&this->gpu_ptr, sizeof(float)*decompress_size);
     this->field = zfp_field_1d(this->gpu_ptr, zfp_type_float, this->N * this->C * this->H * this->W);
     
     int bufsize = zfp_stream_maximum_size(zfp, field);
@@ -197,7 +197,7 @@ void tensor_t<value_type>::decompress() {
     	if(!zfp_decompress(zfp, field)){
             printf("The decompression was unsuccessful\n");
 	}
-         // checkCudaErrors(cudaFree(buffer));
+         checkCudaErrors(cudaFree(buffer));
     } else {
 	printf("Decompression not possible\n");
     } 
@@ -728,15 +728,19 @@ void tensor_t<value_type>::freeSpaceGPU(mem_mode target) {
         this->atomic_set_state(target);
     }
 
-    if (gpu_ptr == NULL) {
+    if (gpu_ptr == NULL && compressed_gpu_ptr == NULL) {
         return;
     }
+
+	
     // printf("free tensor %p layer %d gpu %p  curt: %d target: %d\n", this, this->get_layer_id(), gpu_ptr, get_state(), target);
 
     if(gpu_ptr != NULL) {
         gfree(gpu_malloc, this->gpu_ptr);
         this->gpu_ptr = NULL; 
-    } 
+    } else if(compressed_gpu_ptr != NULL) {
+	cudaFree(compressed_gpu_ptr);
+    }
 
 #ifdef LRU_ON
     if (this->get_type() == DATA) {
