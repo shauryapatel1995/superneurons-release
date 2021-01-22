@@ -111,56 +111,60 @@ void tensor_t<value_type>::compress() {
         return;
     }
      // Print compressing tensor.
-    /*printf("Compressed tensor %d\n", this->layer_id);
+    /* printf("Compressed tensor %d\n", this->tensor_id);
     this->GPUtoCPU(); 
     // float * cpu_print = (float *) this->cpu_ptr;
     for(int i = 0; i < H && i < 3; i++) {
 	for(int j = 0; j < W && j < 3; j++) {
-		printf(" %3.3f, ", this->cpu_ptr[((0*C+0)*H+i)*W+j]);
+		printf(" %3.3f ", this->cpu_ptr[((0*C+0)*H+i)*W+j]);
 	}
      }
      printf("\n");
-     this->CPUtoGPU();*/
+     this->CPUtoGPU(); */
     // compress the tensor. TODO - Check for the value type here to set the zfp_type for the required data. 
     if(true) {
-	 zfp_type type = zfp_type_float;
-         this->field = zfp_field_4d((float *)this->gpu_ptr, type, this->N, this->C, this->H, this->W);
+	 
+         this->field = zfp_field_1d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C * this->H * this->W);
 
          this->zfp = zfp_stream_open(NULL);                  // compressed stream and parameters
-         zfp->maxbits = 2048;
-         zfp_stream_set_rate(zfp, 16, type, zfp_field_dimensionality(this->field), zfp_false);
+         // zfp->maxbits = ZFP_MAX_BITS;
+         zfp_stream_set_rate(zfp, 16, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
 	// start with compression. 
-	// allocate buffer for compressed data
-	size_t bufsize = zfp_stream_maximum_size(zfp, field);     // capacity of compressed buffer (conservative)
+	size_t bufsize = zfp_stream_maximum_size(this->zfp, this->field);  
+        // printf("Buf size is %d", bufsize); 
 	void* buffer; 
-	cudaMalloc(&buffer, bufsize);                           // storage for compressed stream
-
-	// associate bit stream with allocated buffer
-	bitstream* stream = stream_open(buffer, bufsize);         // bit stream to compress to
-	zfp_stream_set_bit_stream(zfp, stream);                   // associate with compressed stream
-	zfp_stream_rewind(zfp);                                   // rewind stream to beginning
+	checkCudaErrors(cudaMalloc(&buffer, bufsize));                 
+	
+        // associate bit stream with allocated buffer
+	bitstream* stream = stream_open(buffer, bufsize);         
+	zfp_stream_set_bit_stream(this->zfp, stream);                   
+	zfp_stream_rewind(this->zfp);                                   
 
 	
 	// Compress on gpu.
 	if (zfp_stream_set_execution(zfp, zfp_exec_cuda)) {
-		size_t zfpsize = zfp_compress(zfp, field);                // return value is byte size of compressed stream
+		size_t zfpsize = zfp_compress(this->zfp, this->field);             
+                if(!zfpsize) 
+			printf("The compression was unsuccessful\n");
 		// printf("Compressed zfp size is %d\n", zfpsize);
 		this->compressed_size = zfpsize; 
-		cudaMalloc((void **)&this->compressed_gpu_ptr, zfpsize);
+		checkCudaErrors(cudaMalloc((void **)&this->compressed_gpu_ptr, zfpsize));
 		// Copy to compressed region.
 		checkCudaErrors(
             cudaMemcpy((void *) this->compressed_gpu_ptr,
                        (void *) buffer,
                        zfpsize, cudaMemcpyDeviceToDevice));
-		cudaFree(buffer); 
+	         checkCudaErrors(cudaFree(buffer)); 
 		// printf("compress tensor %p layer %d gpu %p  curt: %d\n", this, this->get_layer_id(), gpu_ptr, get_state());
 	} else {
 		// printf("Compression wasn't successful!\n");
 	}
     } 
     // free gpu space
-     freeSpaceGPU();
-    
+     // freeSpaceGPU();
+       
+     checkCudaErrors(cudaFree(this->gpu_ptr));
+     zfp_field_free(this->field); 
     // set the state to compressed.
      this->atomic_set_state(GPU_COM);
     // return; 
@@ -175,43 +179,43 @@ void tensor_t<value_type>::decompress() {
     // decompress the tensor. 
     size_t decompress_size = this->N * this->H * this->C * this->W;
     
-    size_t bufsize = zfp_stream_maximum_size(zfp, field);     // capacity of compressed buffer (conservative)
+    // acquireSpaceGPU(decompress_size);	
+    cudaMalloc(&this->gpu_ptr, sizeof(float)*decompress_size);
+    this->field = zfp_field_1d(this->gpu_ptr, zfp_type_float, this->N * this->C * this->H * this->W);
+    
+    int bufsize = zfp_stream_maximum_size(zfp, field);
     void * buffer;
     cudaMalloc(&buffer, bufsize);                           // storage for compressed stream   
     checkCudaErrors(cudaMemcpy((void *) buffer, (void *) this->compressed_gpu_ptr, this->compressed_size, cudaMemcpyDeviceToDevice));
-    // associate bit stream with allocated buffer
+    
+
     bitstream* stream = stream_open(buffer, bufsize);         // bit stream to compress to
     zfp_stream_set_bit_stream(zfp, stream);                   // associate with compressed stream
     zfp_stream_rewind(zfp);                                   // rewind stream to beginning    
     
     if (zfp_stream_set_execution(zfp, zfp_exec_cuda)) {
-        acquireSpaceGPU(decompress_size);	
-    	size_t zfpsize = zfp_decompress(zfp, field);
-	// printf("zfpsize is %d\n", zfpsize);
-    /*    checkCudaErrors(
-            cudaMemcpy((void *) this->gpu_ptr,
-                       (void *) buffer,
-                       decompress_size, cudaMemcpyDeviceToDevice)); */
-        checkCudaErrors(cudaFree(buffer));
-        // printf("Decompressed tensor at layer %d\n!", this->layer_id);
+    	if(!zfp_decompress(zfp, field)){
+            printf("The decompression was unsuccessful\n");
+	}
+         // checkCudaErrors(cudaFree(buffer));
     } else {
 	printf("Decompression not possible\n");
     } 
     // free compressed space
-   checkCudaErrors(cudaFree(this->compressed_gpu_ptr));
-    
+   checkCudaErrors(cudaFree(this->compressed_gpu_ptr)); 
+   zfp_field_free(this->field);
    this->atomic_set_state(GPU_FUL);
 
-    /*printf("Decompressed tensor %d\n", this->layer_id);
-    this->GPUtoCPU();
+    // printf("Decompressed tensor %d\n", this->tensor_id);
+    /* this->GPUtoCPU();
     
-    for(int i = 0; i < (H || 3); i++) {
-        for(int j = 0; j < (W || 3); j++) {
-                printf(" %3.3f, ", this->cpu_ptr[((0*C+0)*H+i)*W+j]);
+    for(int i = 0; i < H && i < 3; i++) {
+        for(int j = 0; j < W && j < 3; j++) {
+                printf(" %3.3f ", this->cpu_ptr[((0*C+0)*H+i)*W+j]);
         }
      }
      printf("\n");
-     this->CPUtoGPU();*/
+     this->CPUtoGPU(); */
 }
 
 

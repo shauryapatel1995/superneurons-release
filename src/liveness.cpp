@@ -387,19 +387,19 @@ void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir) {
     } else {
         outs = (std::vector<std::vector<tensor_t<value_type> *> > *) &b_free_tensors;
     }
-
+    
+    if(dir == FORWARD) {
+        for (auto it = compress_tensors->operator[](layer_id).begin(); it != compress_tensors->operator[](layer_id).end(); ++it) {
+            tensor_t<value_type> *t = *it;
+            t->compress();
+        }
+    }
+    
     for (auto it = outs->operator[](layer_id).begin(); it != outs->operator[](layer_id).end(); ++it) {
         tensor_t<value_type> *t = *it;
         t->free_gpu_space(VOID);
     }
 
-    // Compress tensors.    
-    for (auto it = compress_tensors->operator[](layer_id).begin(); it != compress_tensors->operator[](layer_id).end(); ++it) {
-        tensor_t<value_type> *t = *it;
-        t->compress();
-    }
-
-    // Compress tensors for forward.
     
 #ifdef MEM_DEBUG
     printf("\n-------outs------\n");

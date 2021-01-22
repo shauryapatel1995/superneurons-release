@@ -1,4 +1,5 @@
-CUDA_ROOT_DIR=/usr/local/cuda
+CUDA_ROOT_DIR=/cm/shared/apps/cuda11/11.1.0
+CUDA_TOOLKIT_ROOT_DIR=/cm/shared/apps/cuda11/11.1.0
 CUDNN_ROOT_DIR=/cm/shared/apps/cudnn/8.0-cuda_11.1
 ZFP_ROOT_DIR=/home/shauryakamle/zfp
 

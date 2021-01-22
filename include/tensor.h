@@ -167,14 +167,7 @@ public:
         if(this->data_t == CONV_BUFF && this->data_t == DATA) {
             // Acquire and compress the space.
         }
-	// Set the compression data.
-	zfp_type type = zfp_type_float;
-        this->field = zfp_field_4d(this->gpu_ptr, type, this->N, this->C, this->H, this->W);
-
-        this->zfp = zfp_stream_open(NULL);                  // compressed stream and parameters
-        zfp->maxbits = 4096;
-        zfp_stream_set_rate(zfp, 16, type, 4, 0);
-       
+	       
 #else
         acquireSpaceCPU(n*c*h*w);
         acquireSpaceGPU(n*c*h*w);
