@@ -8,7 +8,7 @@ import cv2
 
 def test1():
     print('test1')
-    x = ImageNet('/home/ay27/hdd/imagenet/bin_file_256/val_label_0.bin', 'i')
+    x = ImageNet('/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_label_0.bin', 'i')
     res = x.unpack(*x.read(50000))
 
     print(x.N, x.C, x.H, x.W)
@@ -18,7 +18,7 @@ def test1():
 
 def test2():
     print('test2')
-    x = ImageNet('/home/ay27/hdd/imagenet/bin_file_256/val_data_0.bin', 'B')
+    x = ImageNet('/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_data_0.bin', 'B')
     res = x.unpack(*x.read(100))
     print(x.N, x.C, x.H, x.W)
     print(res.shape)
@@ -32,7 +32,7 @@ def test2():
 
 def test3():
     print('test3')
-    x = ImageNet('/home/ay27/hdd/imagenet/py_bin/train_label0.bin', 'i')
+    x = ImageNet('/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_label_0.bin', 'i')
     res = x.unpack(*x.read(50000))
     print(x.N, x.C, x.H, x.W)
     print(res.shape)
@@ -41,7 +41,7 @@ def test3():
 
 def test4():
     print('test4')
-    x = ImageNet('/home/ay27/hdd/imagenet/py_bin/train_data0.bin', 'B')
+    x = ImageNet('/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_data_0.bin', 'B')
     res = x.unpack(*x.read(1000))
     print(x.N, x.C, x.H, x.W)
     print(res.shape)
@@ -82,6 +82,6 @@ if __name__ == '__main__':
     test2()
     test3()
     test4()
-    test5()
-    test6()
+    #test5()
+    #test6()
     print('test finish')

@@ -17,12 +17,12 @@ int main(int argc, char **argv) {
         return 0;
     }
     
-    train_mean_file = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/train_mean.bin";
-    train_image_bin = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/train_data_0.bin";
-    train_label_bin = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/train_label_0.bin";
-    test_image_bin  = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/val_data_0.bin";
-    test_label_bin  = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/val_label_0.bin";
-    checkpoint_file = (char *) "/data/lwang53/checkpoints/alexnet/alexnet_checkpoint";
+    train_mean_file = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/train_mean.bin";
+    train_image_bin = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_data_0.bin";
+    train_label_bin = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_label_0.bin";
+    test_image_bin  = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_data_0.bin";
+    test_label_bin  = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_label_0.bin";
+    checkpoint_file = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/alexnet_checkpoint";
     
     const size_t batch_size = atoi(argv[1]); //train and test must be same
     const size_t H = 227, W = 227;

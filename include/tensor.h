@@ -49,6 +49,7 @@ private:
     
     zfp_field* field;
     zfp_stream* zfp;
+    bool * signs;
     size_t compressed_size;     
     size_t GPU_id;                               //this identifies the GPU RAM
     int layer_id;                                //this identifies the affilited layer

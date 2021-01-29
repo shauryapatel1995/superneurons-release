@@ -124,11 +124,12 @@ void tensor_t<value_type>::compress() {
     // compress the tensor. TODO - Check for the value type here to set the zfp_type for the required data. 
     if(true) {
 	 
-         this->field = zfp_field_1d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C * this->H * this->W);
-
+         // this->field = zfp_field_1d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C * this->H * this->W);
+         this->field = zfp_field_3d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
+	 // printf("Current size: %d", sizeof(float)*this->N*this->C*this->H*this->W);
          this->zfp = zfp_stream_open(NULL);                  // compressed stream and parameters
          // zfp->maxbits = ZFP_MAX_BITS;
-         zfp_stream_set_rate(zfp, 16, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
+         zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
 	// start with compression. 
 	size_t bufsize = zfp_stream_maximum_size(this->zfp, this->field);  
         // printf("Buf size is %d", bufsize); 
@@ -138,8 +139,7 @@ void tensor_t<value_type>::compress() {
         // associate bit stream with allocated buffer
 	bitstream* stream = stream_open(buffer, bufsize);         
 	zfp_stream_set_bit_stream(this->zfp, stream);                   
-	zfp_stream_rewind(this->zfp);                                   
-
+	zfp_stream_rewind(this->zfp);                                  
 	
 	// Compress on gpu.
 	if (zfp_stream_set_execution(zfp, zfp_exec_cuda)) {
@@ -148,6 +148,7 @@ void tensor_t<value_type>::compress() {
 			printf("The compression was unsuccessful\n");
 		// printf("Compressed zfp size is %d\n", zfpsize);
 		this->compressed_size = zfpsize; 
+		// printf("Compressed size %d", this->compressed_size);
 		checkCudaErrors(cudaMalloc((void **)&this->compressed_gpu_ptr, zfpsize));
 		// Copy to compressed region.
 		checkCudaErrors(
@@ -181,7 +182,7 @@ void tensor_t<value_type>::decompress() {
     
     acquireSpaceGPU(decompress_size);	
     // cudaMalloc(&this->gpu_ptr, sizeof(float)*decompress_size);
-    this->field = zfp_field_1d(this->gpu_ptr, zfp_type_float, this->N * this->C * this->H * this->W);
+    this->field = zfp_field_3d(this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
     
     int bufsize = zfp_stream_maximum_size(zfp, field);
     void * buffer;

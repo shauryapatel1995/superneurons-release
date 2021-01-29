@@ -68,11 +68,16 @@ int main(int argc, char **argv) {
 
     network_t<float> n(solver);
 
-    train_mean_file = (char *) "/data/lwang53/cifar/cifar_train.mean";
+train_mean_file = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar_train.mean";
+    train_image_bin = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_train_image_0.bin";
+    train_label_bin = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_train_label_0.bin";
+    test_image_bin  = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_test_image_0.bin";
+    test_label_bin  = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_test_label_0.bin";
+    /*train_mean_file = (char *) "/data/lwang53/cifar/cifar_train.mean";
     train_image_bin = (char *) "/data/lwang53/cifar/cifar10_train_image_0.bin";
     train_label_bin = (char *) "/data/lwang53/cifar/cifar10_train_label_0.bin";
     test_image_bin  = (char *) "/data/lwang53/cifar/cifar10_test_image_0.bin";
-    test_label_bin  = (char *) "/data/lwang53/cifar/cifar10_test_label_0.bin";
+    test_label_bin  = (char *) "/data/lwang53/cifar/cifar10_test_label_0.bin"; */
 
     const size_t batch_size = 100; //train and test must be same
     const size_t C = 3, H = 32, W = 32;
