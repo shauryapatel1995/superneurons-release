@@ -9,6 +9,7 @@
 #include <tensor.h>
 #include <registry.h>
 #include <layer/base_layer.h>
+#include <compressor.h>
 
 namespace SuperNeurons {
 
@@ -28,7 +29,8 @@ private:
     std::vector<std::vector<std::pair<int, net_comp> > > *subsequent_backward;
 
     std::vector<LAYER> CHECKPOINT_LAYERS;
-
+    Compressor<value_type> compressor;     
+    
     const int max_layer_id;
 
     inline std::vector<std::pair<int, net_comp> >& get_subsequent_layers(int curt_layer_id, net_comp dir);

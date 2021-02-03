@@ -17,6 +17,7 @@
 #include <gpu_malloc.h>
 #include <util/lru.h>
 #include <cufft.h>
+#include <thread>
 #include "zfp.h"
 
 //#define BLASX_MALLOC
@@ -40,7 +41,8 @@ template <class value_type>
 class tensor_t {
 private:
     std::atomic<int> state;
-    
+     
+ 
     TENSOR_TYPE    data_t;
     value_type*    gpu_ptr  = NULL;                  //gpu and cpu data are mutually exclusive
     value_type*    cpu_ptr  = NULL;
@@ -103,11 +105,11 @@ private:
     void freeSpaceGPU(mem_mode target=CPU);
 
     // make it private
-    void atomic_set_state(int m);
     inline void check_state(mem_mode target);
     
 public:
 
+    void atomic_set_state(int m);
     void compress();
     void decompress();
     int hit_cnt = 0, miss_cnt = 0, into_cnt = 0;

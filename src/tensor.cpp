@@ -105,7 +105,9 @@ void tensor_t<value_type>::GPUtoCPU() {
 // For now we just compress the activation maps of each conv.
 template <class value_type> 
 void tensor_t<value_type>::compress() {
+    // printf("Compressing!\n");
     
+     
     // check gpu_ptr
     if(this->gpu_ptr == NULL || this->cudnn_data_type != CUDNN_DATA_FLOAT) {
         return;
@@ -168,14 +170,27 @@ void tensor_t<value_type>::compress() {
      zfp_field_free(this->field); 
     // set the state to compressed.
      this->atomic_set_state(GPU_COM);
-    // return; 
+    return; 
 }
 
 // Tensor decompression. 
 template <class value_type> 
 void tensor_t<value_type>::decompress() {
-    if(this->compressed_gpu_ptr == NULL && this->gpu_ptr != NULL && this->zfp != NULL) 
+    // printf("Decompressing\n");
+    if(this->get_state() != GPU_COM && this->get_state() != GPU_WORK) {
+	printf("The state isn't proper %d\n", this->get_state());
+	return; 
+    }
+
+    while(this->get_state() == GPU_WORK) {
+    	// busy wait.
+    	// printf("Busy waiting");
+    } 
+    
+    if(this->compressed_gpu_ptr == NULL && this->gpu_ptr != NULL && this->zfp != NULL) {
+	printf("Broken tensor state\n");
         return; 
+    }
 
     // decompress the tensor. 
     size_t decompress_size = this->N * this->H * this->C * this->W;
@@ -232,7 +247,7 @@ void tensor_t<value_type>::CPUtoGPU() {
         into_cnt += 1;
     }
 
-    if(this->data_t == DATA && this->get_state() == GPU_COM) {
+    if(this->data_t == DATA && (this->get_state() == GPU_COM || this->get_state() == GPU_WORK)) {
         // compressed tensor use decompress. 
         this->decompress();
         return; 

@@ -391,7 +391,12 @@ void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir) {
     if(dir == FORWARD) {
         for (auto it = compress_tensors->operator[](layer_id).begin(); it != compress_tensors->operator[](layer_id).end(); ++it) {
             tensor_t<value_type> *t = *it;
-            t->compress();
+            // t->atomic_set_state(GPU_WORK);
+	     //std::thread thread(&tensor_t<value_type>::compress, t);
+	     // thread.detach();
+	    // t->compress();
+	    t->atomic_set_state(GPU_WORK);
+	    this->compressor.add_tensor_to_queue(t);
         }
     }
     

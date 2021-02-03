@@ -66,7 +66,8 @@ typedef enum mem_mode {
     CPU2GPU   = 4,
     GPU2CPU   = 5,
     RECOMPUTE = 6, 
-    GPU_COM   = 7       // gpu with compressed data
+    GPU_COM   = 7,      // gpu with compressed data
+    GPU_WORK  = 8	// working on compression
 } mem_mode;
 
 typedef enum LAYER {
