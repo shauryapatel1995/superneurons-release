@@ -1,6 +1,10 @@
 #include <gpu_malloc.h>
 #define gpu_malloc_info
 
+// Performance improvement for compression using reusable buffer.
+void * reusable_buffer_space;
+int reusable_buffer_size = 0;
+
 blasx_gpu_singleton* blasx_gpu_singleton::instance = NULL;
 
 // Initialize a slab on a GPU given its id.
@@ -177,6 +181,23 @@ void blasx_gpu_free(blasx_gpu_malloc_t *gdata, void *addr)
         p = s;
     }
     //fprintf(stderr,"address to free not allocated\n");
+}
+
+void * acquire_reusable_buffer(int buf_size) {
+	if(reusable_buffer_size == 0) {
+		cudaMalloc(&reusable_buffer_space, buf_size);
+		reusable_buffer_size = buf_size; 
+		return reusable_buffer_space;
+	} else {
+		if(reusable_buffer_size >= buf_size) {
+			return reusable_buffer_space; 
+		} else {
+			cudaFree(reusable_buffer_space);
+			cudaMalloc(&reusable_buffer_space, buf_size);
+                	reusable_buffer_size = buf_size;
+                	return reusable_buffer_space; 
+		}
+	}
 }
 
 /*----leave for future testing purpose----*/

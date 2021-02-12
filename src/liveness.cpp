@@ -336,14 +336,16 @@ void liveness_analysis_t<value_type>::stash(int layer_id, net_comp dir) {
             // No change needed here for decompress.
             // Check t state if it is in compression wait till it decompresses. 
             // If it is compressed put it to the queue and then wait.
-            /* if(t->get_state() == GPU_COM || t->get_state() == GPU_WORK) { 
+            /*if(dir == BACKWARD && (t->get_state() == GPU_COM || t->get_state() == GPU_WORK)) { 
 		this->compressor.start_decompress();
 		while(t->get_state() == GPU_COM || t->get_state() == GPU_WORK) { 
-		    // Busy wait. 
+		    // Busy wait.
+		    // printf("Im stuck"); 
+		     
 		}	        
 	    } else { */
 	        t->CPUtoGPU();
-	    //}
+	    // }
         }
     }
 
