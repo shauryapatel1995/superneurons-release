@@ -44,7 +44,7 @@ cudnnConvolutionFwdAlgoPerf_t conv_layer_t<value_type>::search_fwd_algo( registr
         }
 
         cudaStreamSynchronize(stream_singleton::get_compute_stream());
-        cudaDeviceSynchronize();
+        // cudaDeviceSynchronize();
 
         double ts = get_cur_time();
 
@@ -71,7 +71,7 @@ cudnnConvolutionFwdAlgoPerf_t conv_layer_t<value_type>::search_fwd_algo( registr
 
         results[i].time = (float)(get_cur_time() - ts);
 
-        cudaDeviceSynchronize();
+        // cudaDeviceSynchronize();
 
         if (results[i].time > 0 && results[i].time < min_time) {
             min_time = results[i].time;

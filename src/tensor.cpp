@@ -127,14 +127,15 @@ void tensor_t<value_type>::compress() {
     if(true) {
 	 
          // this->field = zfp_field_1d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C * this->H * this->W);
-         this->field = zfp_field_3d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
-	 // printf("Current size: %d", sizeof(float)*this->N*this->C*this->H*this->W);
-         this->zfp = zfp_stream_open(NULL);                  // compressed stream and parameters
-         // zfp->maxbits = ZFP_MAX_BITS;
-         zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
-	// start with compression. 
+         
+        this->field = zfp_field_3d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
+	// printf("Current size: %d", sizeof(float)*this->N*this->C*this->H*this->W);
+        this->zfp = zfp_stream_open(NULL);                  // compressed stream and parameters
+        // zfp->maxbits = ZFP_MAX_BITS;
+        zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
+	// TODO - This should be precalculated.
 	size_t bufsize = zfp_stream_maximum_size(this->zfp, this->field);  
-        // printf("Buf size is %d", bufsize); 
+	// TODO - This should be preallocated inside mem_control.
 	void* buffer; 
 	checkCudaErrors(cudaMalloc(&buffer, bufsize));                 
 	
@@ -164,12 +165,13 @@ void tensor_t<value_type>::compress() {
 	}
     } 
     // free gpu space
-     freeSpaceGPU(GPU_COM);
+    freeSpaceGPU(GPU_COM);
+     
        
-     // checkCudaErrors(cudaFree(this->gpu_ptr));
-     zfp_field_free(this->field); 
+    // checkCudaErrors(cudaFree(this->gpu_ptr));
+    zfp_field_free(this->field); 
     // set the state to compressed.
-     this->atomic_set_state(GPU_COM);
+    this->atomic_set_state(GPU_COM);
     return; 
 }
 
@@ -248,8 +250,9 @@ void tensor_t<value_type>::CPUtoGPU() {
     }
 
     if(this->data_t == DATA && (this->get_state() == GPU_COM || this->get_state() == GPU_WORK)) {
-        // compressed tensor use decompress. 
-        this->decompress();
+        // compressed tensor use decompress.
+         
+         this->decompress();
         return; 
     }
 

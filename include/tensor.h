@@ -51,7 +51,7 @@ private:
     
     zfp_field* field;
     zfp_stream* zfp;
-    bool * signs;
+    size_t bufsize; 
     size_t compressed_size;     
     size_t GPU_id;                               //this identifies the GPU RAM
     int layer_id;                                //this identifies the affilited layer
@@ -100,8 +100,6 @@ private:
     }
 
     void acquireSpaceGPU(long total);
-    void compressGpuData();
-    void decompressGpuData();
     void freeSpaceGPU(mem_mode target=CPU);
 
     // make it private
@@ -167,8 +165,14 @@ public:
 	// Save memory for anything but CONV on CPU.
         if( this->data_t != CONV_BUFF ) acquireSpaceCPU(n*c*h*w);
 
-        if(this->data_t == CONV_BUFF && this->data_t == DATA) {
+        if(this->data_t == DATA) {
             // Acquire and compress the space.
+            // Perform necessary setup needed for compression.
+            // this->field = zfp_field_3d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
+	    // this->zfp = zfp_stream_open(NULL);
+            // zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
+            // this->bufsize = zfp_stream_maximum_size(this->zfp, this->field);  
+            // zfp_field_free(this->field); 
         }
 	       
 #else

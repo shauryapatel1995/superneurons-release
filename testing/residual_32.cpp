@@ -2,6 +2,7 @@
 #include<math.h>
 #include <superneurons.h>
 #include <solver.h>
+#include <sched.h>
 using namespace SuperNeurons;
 
 
@@ -55,6 +56,10 @@ base_layer_t<float> *residual_block(base_layer_t<float>* bottom, size_t out_num,
 }
 
 int main(int argc, char **argv) {
+    cpu_set_t mask; 
+    CPU_ZERO(&mask);
+    CPU_SET(1, &mask);
+    int result = sched_setaffinity(0, sizeof(mask), &mask);
     char *train_label_bin;
     char *train_image_bin;
     char *test_label_bin;

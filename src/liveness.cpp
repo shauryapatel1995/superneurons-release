@@ -334,11 +334,20 @@ void liveness_analysis_t<value_type>::stash(int layer_id, net_comp dir) {
             // Instead of this we can do compress to GPU. This is purely for CPU to GPU. 
             // Let's separate the concerns. 
             // No change needed here for decompress.
-            t->CPUtoGPU();
+            // Check t state if it is in compression wait till it decompresses. 
+            // If it is compressed put it to the queue and then wait.
+            /* if(t->get_state() == GPU_COM || t->get_state() == GPU_WORK) { 
+		this->compressor.start_decompress();
+		while(t->get_state() == GPU_COM || t->get_state() == GPU_WORK) { 
+		    // Busy wait. 
+		}	        
+	    } else { */
+	        t->CPUtoGPU();
+	    //}
         }
     }
 
-    // Decompress compressed tensors on backward. 
+    
 
     
 
@@ -391,12 +400,9 @@ void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir) {
     if(dir == FORWARD) {
         for (auto it = compress_tensors->operator[](layer_id).begin(); it != compress_tensors->operator[](layer_id).end(); ++it) {
             tensor_t<value_type> *t = *it;
-            // t->atomic_set_state(GPU_WORK);
-	     //std::thread thread(&tensor_t<value_type>::compress, t);
-	     // thread.detach();
 	    // t->compress();
-	    t->atomic_set_state(GPU_WORK);
-	    this->compressor.add_tensor_to_queue(t);
+	     t->atomic_set_state(GPU_WORK);
+	     this->compressor.add_tensor_to_queue(t);
         }
     }
     
