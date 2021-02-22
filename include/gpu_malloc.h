@@ -32,6 +32,7 @@ void   blasx_gpu_malloc_fini(blasx_gpu_malloc_t* gdata, int GPU_id);
 void*  blasx_gpu_malloc(blasx_gpu_malloc_t *gdata, size_t nbytes);
 void   blasx_gpu_free(blasx_gpu_malloc_t *gdata, void *addr);
 void*  acquire_reusable_buffer(int buf_size);
+void*  acquire_decompress_reusable_buffer(int buf_size);
 
 
 class blasx_gpu_singleton {

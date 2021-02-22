@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     char* test_image_bin;
     char* checkpoint_file;
     
-    if( argc != 3 ) {
+    if( argc != 4 ) {
         printf("please run as ./alexnet batch_size training_iters\n");
         return 0;
     }
@@ -47,7 +47,8 @@ int main(int argc, char **argv) {
     /*--------------network configuration--------------*/
     base_solver_t<float>* solver = (base_solver_t<float> *) new momentum_solver_t<float>(0.01, 0.0005, 0.9);
     solver->set_lr_decay_policy(ITER, {100000, 200000, 300000, 400000}, {0.001, 0.0001, 0.00001, 0.000001});
-    network_t<float> n(solver);
+    bool do_compress = atoi(argv[3]);
+    network_t<float> n(solver, do_compress);
     
     //    network_saver* saver = new network_saver_impl<float>(checkpoint_file, n.get_registry());
     //    install_signal_processor(saver);

@@ -6,6 +6,9 @@
 #include "zfp.h"
 #include <cuda_runtime_api.h>
 #include <cuda.h>
+#include <chrono>
+
+typedef std::chrono::steady_clock Clock;
 
 namespace SuperNeurons{
 
@@ -105,6 +108,7 @@ void tensor_t<value_type>::GPUtoCPU() {
 // For now we just compress the activation maps of each conv.
 template <class value_type> 
 void tensor_t<value_type>::compress() {
+    // std::lock_guard<std::mutex> lock(this->state_lock);
     // check gpu_ptr
     if(this->gpu_ptr == NULL || this->cudnn_data_type != CUDNN_DATA_FLOAT) {
         return;
@@ -155,7 +159,7 @@ void tensor_t<value_type>::compress() {
             cudaMemcpy((void *) this->compressed_gpu_ptr,
                        (void *) buffer,
                        zfpsize, cudaMemcpyDeviceToDevice));
-	         // checkCudaErrors(cudaFree(buffer)); 
+	        // checkCudaErrors(cudaFree(buffer)); 
 		// printf("compress tensor %p layer %d gpu %p  curt: %d\n", this, this->get_layer_id(), gpu_ptr, get_state());
 	} else {
 		printf("Cuda not available!\n");
@@ -169,6 +173,7 @@ void tensor_t<value_type>::compress() {
     zfp_field_free(this->field); 
     // set the state to compressed.
     this->atomic_set_state(GPU_COM);
+    // compress_decompress_signal.notify_one();
     return; 
 }
 
@@ -176,32 +181,38 @@ void tensor_t<value_type>::compress() {
 template <class value_type> 
 void tensor_t<value_type>::decompress() {
     // printf("Decompressing\n");
+    // std::unique_lock<std::mutex> lock(this->state_lock);
     if(this->get_state() != GPU_COM && this->get_state() != GPU_WORK) {
 	printf("The state isn't proper %d\n", this->get_state());
 	return; 
     }
-
+    auto t1 = Clock::now();
     while(this->get_state() == GPU_WORK) {
     	// busy wait.
-    	 printf("Busy waiting");
+    	// printf("Busy waiting");
+    	// compress_decompress_signal.wait(lock);
     } 
-    
+    // lock.unlock();
+    auto t2 = Clock::now();
+    auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    /*if(time > 0) 
+	    printf("Decompression sync wait time: %d ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
+    */
     if(this->compressed_gpu_ptr == NULL && this->gpu_ptr != NULL && this->zfp != NULL) {
 	printf("Broken tensor state\n");
         return; 
     }
-
     // decompress the tensor. 
     size_t decompress_size = this->N * this->H * this->C * this->W;
     
     acquireSpaceGPU(decompress_size);	
     // cudaMalloc(&this->gpu_ptr, sizeof(float)*decompress_size);
     this->field = zfp_field_3d(this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
-    
+    zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false); 
     int bufsize = zfp_stream_maximum_size(zfp, field);
     void * buffer;
     // cudaMalloc(&buffer, bufsize);                           // storage for compressed stream   
-    buffer = acquire_reusable_buffer(bufsize);
+    buffer = acquire_decompress_reusable_buffer(bufsize);
     checkCudaErrors(cudaMemcpy((void *) buffer, (void *) this->compressed_gpu_ptr, this->compressed_size, cudaMemcpyDeviceToDevice));
     
 
@@ -213,12 +224,13 @@ void tensor_t<value_type>::decompress() {
     	if(!zfp_decompress(zfp, field)){
             printf("The decompression was unsuccessful\n");
 	}
-         // checkCudaErrors(cudaFree(buffer));
+        // checkCudaErrors(cudaFree(buffer));
+   	checkCudaErrors(cudaFree(this->compressed_gpu_ptr)); 
+        
     } else {
 	printf("Decompression not possible\n");
     } 
     // free compressed space
-   checkCudaErrors(cudaFree(this->compressed_gpu_ptr)); 
    zfp_field_free(this->field);
    this->atomic_set_state(GPU_FUL);
 
@@ -253,7 +265,7 @@ void tensor_t<value_type>::CPUtoGPU() {
          
         this->decompress();
         return; 
-    }
+    } 
 
     if (this->get_state() == GPU_FUL) {
         if (data_t == DATA) {

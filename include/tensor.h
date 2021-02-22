@@ -18,6 +18,8 @@
 #include <util/lru.h>
 #include <cufft.h>
 #include <thread>
+#include <condition_variable>
+#include <mutex>
 #include "zfp.h"
 
 //#define BLASX_MALLOC
@@ -41,7 +43,8 @@ template <class value_type>
 class tensor_t {
 private:
     std::atomic<int> state;
-     
+    std::mutex state_lock;
+    std::condition_variable compress_decompress_signal;
  
     TENSOR_TYPE    data_t;
     value_type*    gpu_ptr  = NULL;                  //gpu and cpu data are mutually exclusive

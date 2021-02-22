@@ -302,16 +302,28 @@ int main(int argc, char **argv) {
         fprintf(stderr, "not implement for the layernum=%d\n", lay_num);
         exit(-1);
     }
-
+    
+    if(argc < 2) {
+    	printf("Please provide compression option!\n");
+	return 0;
+    }
+	
     base_solver_t<float> *solver = (base_solver_t<float> *) new nesterov_solver_t<float>(0.1, 0.0004, 0.9);
     solver->set_lr_decay_policy(ITER, {500000, 1000000}, {0.01, 0.001});
-    network_t<float> n(solver);
+    bool do_compress = atoi(argv[1]);
+    network_t<float> n(solver, do_compress);
 
-    train_mean_file = (char *) "/home/ay27/dataset/bin_file/imgnet_train.mean";
+    train_mean_file = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/train_mean.bin";
+    train_image_bin = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_data_0.bin";
+    train_label_bin = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_label_0.bin";
+    test_image_bin  = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_data_0.bin";
+    test_label_bin  = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_label_0.bin";
+    // checkpoint_file = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/alexnet_checkpoint";
+    /*train_mean_file = (char *) "/home/ay27/dataset/bin_file/imgnet_train.mean";
     train_image_bin = (char *) "/home/ay27/dataset/bin_file/train_data_0.bin";
     train_label_bin = (char *) "/home/ay27/dataset/bin_file/train_label_0.bin";
     test_image_bin  = (char *) "/home/ay27/dataset/bin_file/val_data_0.bin";
-    test_label_bin  = (char *) "/home/ay27/dataset/bin_file/val_label_0.bin";
+    test_label_bin  = (char *) "/home/ay27/dataset/bin_file/val_label_0.bin";*/
 
     const size_t batch_size = static_cast<const size_t>(atoi(argv[1])); //train and test must be same
     const size_t C = 3, H = 227, W = 227;

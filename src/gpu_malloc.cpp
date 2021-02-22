@@ -4,6 +4,10 @@
 // Performance improvement for compression using reusable buffer.
 void * reusable_buffer_space;
 int reusable_buffer_size = 0;
+void * decompress_reusable_buffer_space;
+int decompress_reusable_buffer_size = 0;
+
+
 
 blasx_gpu_singleton* blasx_gpu_singleton::instance = NULL;
 
@@ -199,6 +203,25 @@ void * acquire_reusable_buffer(int buf_size) {
 		}
 	}
 }
+
+void * acquire_decompress_reusable_buffer(int buf_size) {
+	if(decompress_reusable_buffer_size == 0) {
+		cudaMalloc(&decompress_reusable_buffer_space, buf_size);
+		decompress_reusable_buffer_size = buf_size; 
+		return reusable_buffer_space;
+	} else {
+		if(decompress_reusable_buffer_size >= buf_size) {
+			return decompress_reusable_buffer_space; 
+		} else {
+			cudaFree(decompress_reusable_buffer_space);
+			cudaMalloc(&decompress_reusable_buffer_space, buf_size);
+                	decompress_reusable_buffer_size = buf_size;
+                	return decompress_reusable_buffer_space; 
+		}
+	}
+}
+
+
 
 /*----leave for future testing purpose----*/
 //gpu_malloc testing

@@ -336,21 +336,20 @@ void liveness_analysis_t<value_type>::stash(int layer_id, net_comp dir) {
             // No change needed here for decompress.
             // Check t state if it is in compression wait till it decompresses. 
             // If it is compressed put it to the queue and then wait.
-            /*if(dir == BACKWARD && (t->get_state() == GPU_COM || t->get_state() == GPU_WORK)) { 
-		this->compressor.start_decompress();
+            /*if(dir == BACKWARD && (t->get_state() == GPU_COM || t->get_state() == GPU_WORK)) {
+		// printf("Calling decompress\n"); 
+		this->compressor.start_decompress(t);
 		while(t->get_state() == GPU_COM || t->get_state() == GPU_WORK) { 
 		    // Busy wait.
 		    // printf("Im stuck"); 
 		     
 		}	        
+		// printf("Finished call\n");
 	    } else { */
 	        t->CPUtoGPU();
-	    // }
+	    // } 
         }
     }
-
-    
-
     
 
 
@@ -399,12 +398,12 @@ void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir) {
         outs = (std::vector<std::vector<tensor_t<value_type> *> > *) &b_free_tensors;
     }
     
-    if(dir == FORWARD) {
+    if(dir == FORWARD && do_compress) {
         for (auto it = compress_tensors->operator[](layer_id).begin(); it != compress_tensors->operator[](layer_id).end(); ++it) {
             tensor_t<value_type> *t = *it;
 	    // t->compress();
-	     t->atomic_set_state(GPU_WORK);
-	     this->compressor.add_tensor_to_queue(t);
+	    t->atomic_set_state(GPU_WORK);
+	    this->compressor.add_tensor_to_queue(t);
         }
     }
     

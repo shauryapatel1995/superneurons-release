@@ -51,7 +51,7 @@ public:
 //        print_regulated_tensors(true);
     }
     
-    void init(registry_t<value_type> *r);
+    void init(registry_t<value_type> *r, bool do_compress);
 
     /***************************************/
     // for profile

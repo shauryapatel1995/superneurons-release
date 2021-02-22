@@ -16,7 +16,11 @@ int main(int argc, char **argv) {
     train_label_bin = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_train_label_0.bin";
     test_image_bin  = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_test_image_0.bin";
     test_label_bin  = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_test_label_0.bin";
-
+    
+    if(argc != 2) {
+	printf("Please provide compression params!\n");
+	return 0;
+    }
     const size_t batch_size = 256; //train and test must be same
     const size_t C = 3, H = 32, W = 32;
     const int flag = 0;     // 1 for read from memory, 0 for read from disk
@@ -62,9 +66,9 @@ int main(int argc, char **argv) {
 
 
     /*--------------network configuration--------------*/
-
+    bool do_compress = atoi(argv[1]);
     base_solver_t<float>* solver = (base_solver_t<float> *) new momentum_solver_t<float>(0.01, 0.0, 0.9);
-    network_t<float> n(solver);
+    network_t<float> n(solver, do_compress);
 
     base_layer_t<float>* conv_1 = (base_layer_t<float>*) new conv_layer_t<float>(64, 5, 1, 2, 2, new gaussian_initializer_t<float>(0, 0.02), true, new constant_initializer_t<float>(0.0));
     base_layer_t<float>* relu_1 = (base_layer_t<float>*) new act_layer_t<float>(CUDNN_ACTIVATION_RELU, CUDNN_NOT_PROPAGATE_NAN);

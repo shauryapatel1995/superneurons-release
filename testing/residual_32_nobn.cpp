@@ -11,11 +11,11 @@ int main(int argc, char **argv) {
     network_t<float> n(0.001, 0.0005, 0.9, 3000);
 
 
-    train_mean_file = (char *) "/home/xluo/DeepLearning/data/cifar10/cifar10_train_image.mean";
-    train_image_bin = (char *) "/home/xluo/DeepLearning/data/cifar10/cifar10_train_image.bin";
-    train_label_bin = (char *) "/home/xluo/DeepLearning/data/cifar10/cifar10_train_label.bin";
-    test_image_bin  = (char *) "/home/xluo/DeepLearning/data/cifar10/cifar10_test_image.bin";
-    test_label_bin  = (char *) "/home/xluo/DeepLearning/data/cifar10/cifar10_test_label.bin";
+    train_mean_file = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar_train.mean";
+    train_image_bin = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_train_image_0.bin";
+    train_label_bin = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_train_label_0.bin";
+    test_image_bin  = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_test_image_0.bin";
+    test_label_bin  = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_test_label_0.bin";
     const size_t batch_size = 100; //train and test must be same
     parallel_reader_t<float > reader2(test_image_bin, test_label_bin, 2, batch_size, train_mean_file);
     base_layer_t<float>* data_2 = (base_layer_t<float>*) new data_layer_t<float>(data_test, &reader2);

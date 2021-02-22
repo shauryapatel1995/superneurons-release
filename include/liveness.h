@@ -17,6 +17,7 @@ namespace SuperNeurons {
 template<class value_type>
 class liveness_analysis_t {
 private:
+    bool do_compress;
     std::vector<std::vector<void *> > f_stash_tensors;
     std::vector<std::vector<void *> > b_stash_tensors;
     std::vector<std::vector<void *> > f_free_tensors;
@@ -66,11 +67,12 @@ public:
                         std::vector<std::vector<std::pair<int, net_comp>>> *_subsequent_forward,
                         std::vector<std::vector<std::pair<int, net_comp>>> *_subsequent_backward,
                         const std::vector<LAYER> &_CHECKPOINT_LAYERS,
-                        int _max_layer_id) : reg(_reg), regulated_tensors(_regulated_tensors),
+                        int _max_layer_id, bool _do_compress) : reg(_reg), regulated_tensors(_regulated_tensors),
                                              subsequent_forward(_subsequent_forward),
                                              subsequent_backward(_subsequent_backward),
                                              CHECKPOINT_LAYERS(_CHECKPOINT_LAYERS),
-                                             max_layer_id(_max_layer_id) {
+                                             max_layer_id(_max_layer_id),
+					     do_compress(_do_compress) {
         // stash the forward dependencies that are CONV and DATA and regulated in this.
         set_ins(&f_stash_tensors, FORWARD);
         set_ins(&b_stash_tensors, BACKWARD);

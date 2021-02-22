@@ -7,7 +7,7 @@ namespace SuperNeurons{
 
 
 template <class value_type>
-void mem_controller_t<value_type>::init(registry_t<value_type> *r) {
+void mem_controller_t<value_type>::init(registry_t<value_type> *r, bool do_compress) {
     this->reg = r;
 
     // Sets the memory mode of CONV and DATA to void. 
@@ -56,7 +56,7 @@ void mem_controller_t<value_type>::init(registry_t<value_type> *r) {
                                                     &subsequent_forward,
                                                     &subsequent_backward,
                                                     CHECKPOINT_LAYERS,
-                                                    max_layer_id);
+                                                    max_layer_id, do_compress);
 #endif
 #ifdef RECOMPUTE_ON
     recomp = new recompute_t<value_type>(reg, (std::map<void *, mem_mode>*)&regulated_tensors, CHECKPOINT_LAYERS, max_layer_id);

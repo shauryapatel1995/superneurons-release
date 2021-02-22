@@ -8,10 +8,12 @@
 #include <util/common.h>
 #include <gpu_malloc.h>
 #include <util/error_util.h>
+#include <mutex>
 
 namespace SuperNeurons {
 
 #define BYTE_TO_MB(_size_in_byte) (((double)(_size_in_byte)) / 1024.0 / 1024.0)
+ 
 
 inline size_t query_free_mem() {
 #ifdef BLASX_MALLOC

@@ -67,11 +67,15 @@ int main(int argc, char **argv) {
     char *train_mean_file;
 
     int loop_num = 5;
-
+    if(argc < 2) {
+	printf("Please provide compression info!\n");
+	return 0;	
+    }
+    bool do_compress = atoi(argv[1]);
     base_solver_t<float>* solver = (base_solver_t<float>*) new nesterov_solver_t<float>(0.01, 0.0004, 0.9);
     solver->set_lr_decay_policy(ITER, {400, 50000, 100000}, {0.1, 0.01, 0.001});
 
-    network_t<float> n(solver);
+    network_t<float> n(solver, do_compress);
 
 train_mean_file = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar_train.mean";
     train_image_bin = (char *) "/home/shauryakamle/superneurons-release/cifar-10-batches-bin/cifar10_train_image_0.bin";

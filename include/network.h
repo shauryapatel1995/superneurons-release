@@ -42,6 +42,7 @@ private:
     cublasHandle_t  cublas_handle;
     cudnnDataType_t cudnn_data_type;
     cudaStream_t stream = stream_singleton::get_compute_stream();
+    bool do_compress; 
 
 
     /*-computation route-*/
@@ -119,7 +120,7 @@ private:
         printf("****************************************************\n");
         
         printf("*****************init memory control****************\n");
-        mem_controller.init(reg);
+        mem_controller.init(reg, do_compress);
         mem_controller.print_regulated_tensors();
         printf("****************************************************\n");
     }
@@ -161,7 +162,7 @@ private:
 
 public:
 
-    network_t(base_solver_t<value_type>* _solver):is_network_computable(false), solver(_solver), clip_gradient_limit(35.0), test_iter(0)
+    network_t(base_solver_t<value_type>* _solver, bool _do_compress = false):is_network_computable(false), solver(_solver), clip_gradient_limit(35.0), test_iter(0), do_compress(_do_compress) 
     {
         google::InitGoogleLogging("");
         FLAGS_logtostderr = 1;
