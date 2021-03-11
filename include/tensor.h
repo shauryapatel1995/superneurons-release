@@ -49,7 +49,7 @@ private:
     TENSOR_TYPE    data_t;
     value_type*    gpu_ptr  = NULL;                  //gpu and cpu data are mutually exclusive
     value_type*    cpu_ptr  = NULL;
-    value_type*    compressed_gpu_ptr = NULL;       // If data is in gpu it can be compressed or uncompressed.
+    void*    compressed_gpu_ptr = NULL;       // If data is in gpu it can be compressed or uncompressed.
     cufftComplex*  freq_ptr = NULL;
     
     zfp_field* field;
@@ -168,15 +168,22 @@ public:
 	// Save memory for anything but CONV on CPU.
         if( this->data_t != CONV_BUFF ) acquireSpaceCPU(n*c*h*w);
 
-        if(this->data_t == DATA) {
-            // Acquire and compress the space.
-            // Perform necessary setup needed for compression.
-            // this->field = zfp_field_3d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
-	    // this->zfp = zfp_stream_open(NULL);
-            // zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
-            // this->bufsize = zfp_stream_maximum_size(this->zfp, this->field);  
-            // zfp_field_free(this->field); 
-        }
+        /*if(this->data_t == DATA) {
+	    // Setup memory for compressed tensor. 
+            update_reusable_buffer_size((total_size*sizeof(value_type))/ 5); 
+	    void * gpu_ptr; 
+	    cudaMalloc(&gpu_ptr, n*c*h*w*sizeof(value_type));
+	    // acquireSpaceGPU(n*c*h*w); 
+            // Setup zfp values to obtain maximum buf size among all tensors.
+            this->field = zfp_field_3d((void *)gpu_ptr, zfp_type_float, n*c, h, w);
+            this->zfp = zfp_stream_open(NULL);
+            zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
+            size_t bufsize = zfp_stream_maximum_size(this->zfp, this->field);
+            
+	    max_buffer_size(bufsize);
+            cudaFree(gpu_ptr);
+            zfp_field_free(this->field);
+        } */
 	       
 #else
         acquireSpaceCPU(n*c*h*w);
@@ -223,9 +230,10 @@ public:
     }
     
     ~tensor_t() {
+	printf("Deleting tensor\n");
         if(cpu_ptr != NULL) cudaFreeHost(cpu_ptr);
         if(gpu_ptr != NULL) gpu_ptr = NULL;
-        if(compressed_gpu_ptr != NULL) cudaFree(compressed_gpu_ptr);
+        // if(compressed_gpu_ptr != NULL) cudaFree(compressed_gpu_ptr);
         
         if(field != NULL) 
 		zfp_field_free(field);
@@ -238,7 +246,23 @@ public:
     }
     
     /*----utility functions----*/
-
+    // Reserve space for tensor in the reusable buffer space.
+    void reserve_space_for_compression() {
+            // Setup memory for compressed tensor. 
+            update_reusable_buffer_size((this->N*this->C*this->H*this->W*sizeof(value_type))/ 5); 
+	    void * gpu_ptr; 
+	    checkCudaErrors(cudaMalloc(&gpu_ptr, this->N*this->C*this->H*this->W*sizeof(value_type)));
+	    // acquireSpaceGPU(n*c*h*w); 
+            // Setup zfp values to obtain maximum buf size among all tensors.
+            this->field = zfp_field_3d((void *)gpu_ptr, zfp_type_float, this->N*this->C, this->H, this->W);
+            this->zfp = zfp_stream_open(NULL);
+            zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
+            size_t bufsize = zfp_stream_maximum_size(this->zfp, this->field);
+            
+	    max_buffer_size(bufsize);
+            checkCudaErrors(cudaFree(gpu_ptr));
+            zfp_field_free(this->field);
+    }
     /**
      * NCHW, layer_id, data_type, data
      * Don't know yet what is this used for.

@@ -3,9 +3,12 @@
 
 // Performance improvement for compression using reusable buffer.
 void * reusable_buffer_space;
+void * initial_buffer_space; 
 int reusable_buffer_size = 0;
+int max_buf_size = 0;
 void * decompress_reusable_buffer_space;
 int decompress_reusable_buffer_size = 0;
+bool reusable_buffer_allocated = false; 
 
 
 
@@ -187,8 +190,27 @@ void blasx_gpu_free(blasx_gpu_malloc_t *gdata, void *addr)
     //fprintf(stderr,"address to free not allocated\n");
 }
 
+// For all the decompressed spaces.
+void update_reusable_buffer_size(int tensor_size) {
+	reusable_buffer_size += tensor_size;
+	return;
+}
+
+void max_buffer_size(int buf_size) {
+	printf("Asking for buf size %d\n", buf_size);
+	if(max_buf_size < buf_size) {
+		max_buf_size = buf_size;
+	}
+}
+
+void delete_compressed_tensor(int delete_size) {
+	reusable_buffer_space -= delete_size;
+	if(reusable_buffer_space < initial_buffer_space) 
+		printf("Wrong memory being accessed\n");
+}
+
 void * acquire_reusable_buffer(int buf_size) {
-	if(reusable_buffer_size == 0) {
+	/*if(reusable_buffer_size == 0) {
 		cudaMalloc(&reusable_buffer_space, buf_size);
 		reusable_buffer_size = buf_size; 
 		return reusable_buffer_space;
@@ -200,12 +222,28 @@ void * acquire_reusable_buffer(int buf_size) {
 			cudaMalloc(&reusable_buffer_space, buf_size);
                 	reusable_buffer_size = buf_size;
                 	return reusable_buffer_space; 
-		}
+
+	} */
+	if(!reusable_buffer_allocated) {
+		printf("Acquiring reusable buf space compressed tensors size %d max buf size %d\n", reusable_buffer_size, max_buf_size);
+		cudaMalloc(&reusable_buffer_space, reusable_buffer_size + max_buf_size);
+		reusable_buffer_allocated = true;
+		printf("Initial buffer value is %d", reusable_buffer_space);
+		initial_buffer_space = reusable_buffer_space; 
+		return reusable_buffer_space;
 	}
+
+	return reusable_buffer_space; 
+
 }
 
-void * acquire_decompress_reusable_buffer(int buf_size) {
-	if(decompress_reusable_buffer_size == 0) {
+// Keep compressed tensor inside the buffer space.
+void update_reusable_pointer(int zfp_size) {
+	reusable_buffer_space += zfp_size;
+}
+
+void * acquire_decompress_reusable_buffer(int compressed_size) {
+	/*if(decompress_reusable_buffer_size == 0) {
 		cudaMalloc(&decompress_reusable_buffer_space, buf_size);
 		decompress_reusable_buffer_size = buf_size; 
 		return reusable_buffer_space;
@@ -218,7 +256,8 @@ void * acquire_decompress_reusable_buffer(int buf_size) {
                 	decompress_reusable_buffer_size = buf_size;
                 	return decompress_reusable_buffer_space; 
 		}
-	}
+	}*/
+	return reusable_buffer_space + compressed_size; 
 }
 
 

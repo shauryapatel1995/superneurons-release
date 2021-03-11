@@ -54,7 +54,7 @@ template<class value_type>
 bool liveness_analysis_t<value_type>::is_compressible_afterwards(int curt_layer_id, tensor_t<value_type> *t) {
     int i = 0; 
     net_comp dir = FORWARD;
-    printf("Checking compressible for layer %d\n", curt_layer_id);
+    // printf("Checking compressible for layer %d\n", curt_layer_id);
     std::vector<std::pair<int, net_comp> > subsequent_layers = get_subsequent_layers(curt_layer_id, FORWARD);
     bool is_used = true; 
     while(i < subsequent_layers.size() && dir == FORWARD) {
@@ -66,30 +66,30 @@ bool liveness_analysis_t<value_type>::is_compressible_afterwards(int curt_layer_
         bool is_used = is_used_by_layer(layer.first, layer.second, t);
         // return false if we need to use it for a forward layer. 
         if(is_used) {
-	    printf("Tensor at layer %d is being used by %d and direction %d", t->get_layer_id(), layer.first, layer.second);
+	    // printf("Tensor at layer %d is being used by %d and direction %d", t->get_layer_id(), layer.first, layer.second);
             return false;
 	}        
         i++;
     } 
 
     is_used = false;
-    printf("Checking backward!\n"); 
+    // printf("Checking backward!\n"); 
     while(i < subsequent_layers.size()) {
         std::pair<int, net_comp> layer = subsequent_layers[i];
         
         // here dependency will be backward. 
-	printf("Checking backward layer %d, %d\n", layer.first, layer.second);
+	// printf("Checking backward layer %d, %d\n", layer.first, layer.second);
         is_used = is_used_by_layer(layer.first, layer.second, t);
         
         // We need it in backward so compress it.
         if(is_used) {
-	    printf("Is used is true for backward!\n");
+	    // printf("Is used is true for backward!\n");
             break;
 	}        
         i++;
     } 
     
-    printf("Finished backward %d\n", is_used); 
+    // printf("Finished backward %d\n", is_used); 
     
     if(!is_used)
         return false; 
@@ -274,10 +274,11 @@ void liveness_analysis_t<value_type>::set_compress(std::vector<std::vector<void 
                 continue;
             }
 
-            printf("Checking tensor %d at layer %d\n", t->get_layer_id(), layer_id);
+            // printf("Checking tensor %d at layer %d\n", t->get_layer_id(), layer_id);
             bool canCompress = is_compressible_afterwards(layer_id, t);
             if(canCompress) {
-                printf("Compress tensor %d at layer %d\n", t->get_layer_id(), layer_id);
+                // printf("Compress tensor %d at layer %d\n", t->get_layer_id(), layer_id);
+                // t->reserve_space_for_compression();
                 compress->operator[](layer_id).push_back((void *)t);
             }
                     
@@ -406,12 +407,17 @@ void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir) {
 	    this->compressor.add_tensor_to_queue(t);
         }
     }
-    
+     
+    // printf("Freeing space in gpu from outs\n"); 
     for (auto it = outs->operator[](layer_id).begin(); it != outs->operator[](layer_id).end(); ++it) {
         tensor_t<value_type> *t = *it;
-        t->free_gpu_space(VOID);
+	// Don't free already compressed tensors.
+	if(t->get_state() == GPU_COM || t->get_state() == GPU_WORK) 
+		continue;
+	t->free_gpu_space(VOID);
+    
     }
-
+    // printf("Finished outs\n");
     
 #ifdef MEM_DEBUG
     printf("\n-------outs------\n");

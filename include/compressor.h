@@ -117,8 +117,8 @@ public:
                         // printf("Time compression thread slept %d ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count());
 			if(t != nullptr) { 
                                 auto t1 = Clock::now();
-				decompression_stack.push(t);
-				pending_tensors.insert(t);
+				// decompression_stack.push(t);
+				// pending_tensors.insert(t);
 				t->compress();
 				auto t2 = Clock::now();
 				// printf("Time taken in compression %d micros\n", std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count());

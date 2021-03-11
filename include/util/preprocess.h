@@ -198,7 +198,7 @@ public:
 
     ~preprocessor() {
         for (size_t i = 0; i < tmps.size(); ++i) {
-            cudaFree(tmps[i]);
+            checkCudaErrors(cudaFree(tmps[i]));
         }
     }
 
