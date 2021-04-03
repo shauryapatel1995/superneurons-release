@@ -30,7 +30,6 @@ private:
     size_t test_iter;
     size_t test_interval;
 
-
     /*-network configurations-*/
     size_t GPU_id;
     bool is_forward_setup;
@@ -320,7 +319,9 @@ public:
             double iter_start = get_cur_time();
             /*--network calculation--*/
             loss = forward(NET_TRAIN);
-            backward();
+            // Wake up decompressor thread for backward.
+            // printf("Backward\n");   
+	    backward();
             update(i);
             //backward_with_update(i);
             /*----loss statistics----*/

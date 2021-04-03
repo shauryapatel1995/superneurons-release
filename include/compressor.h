@@ -25,7 +25,8 @@ private:
 	std::stack<tensor_t<value_type>* > decompression_stack;
 	std::unordered_set<tensor_t<value_type> *> pending_tensors;
 	int counter; 
-	std::thread t1, t2, t3; 
+	std::thread t1, t2, t3;
+        bool decompress = false; 
 
 public:
 	Compressor() {
@@ -35,17 +36,15 @@ public:
 		// t2 = std::thread(&SuperNeurons::Compressor<value_type>::decompress_tensor, this);
 		// t2 = std::thread(&SuperNeurons::Compressor<value_type>::compress_tensor, this);
 		// t3 = std::thread(&SuperNeurons::Compressor<value_type>::compress_tensor, this);
-		cpu_set_t cpuset;
+		/*cpu_set_t cpuset;
     		CPU_ZERO(&cpuset);
-    		CPU_SET(1, &cpuset);
-    		int rc = pthread_setaffinity_np(t1.native_handle(), sizeof(cpu_set_t), &cpuset);
+    		CPU_SET(2, &cpuset);
+    		int rc = pthread_setaffinity_np(t1.native_handle(), sizeof(cpu_set_t), &cpuset);*/
 	        // int rc2 = pthread_setaffinity_np(t2.native_handle(), sizeof(cpu_set_t), &cpuset);	
 	        // int rc2 = pthread_setaffinity_np(t2.native_handle(), sizeof(cpu_set_t), &cpuset);	
     		//int rc2 = pthread_setaffinity_np(t2.native_handle(), sizeof(cpu_set_t), &cpuset);
     		//int rc3 = pthread_setaffinity_np(t3.native_handle(), sizeof(cpu_set_t), &cpuset);
     		// int rc4 = pthread_setaffinity_np(std::this_thread.native_handle(), sizeof(cpu_set_t), &cpuset);
-	
-
 	}
 	
 	~Compressor() {
@@ -56,9 +55,15 @@ public:
 		//t3.join();
 	}
 	
-	void start_decompress(tensor_t<value_type> * _t) {
+	void start_decompress() {
+		
 		while(compression_queue.size() != 0) {
 			printf("Compression queue size %d\n", compression_queue.size());
+		}
+		if(!decompress) {
+			printf("Starting decompress\n");
+			decompress = true; 
+			t2 = std::thread(&SuperNeurons::Compressor<value_type>::decompress_tensor, this);
 		}
 		/*if(counter < 3) {
 			++counter; 
@@ -112,6 +117,7 @@ public:
 				c.wait(lock);
 			}
 			t = compression_queue.front(); compression_queue.pop();
+			decompression_stack.push(t);
 			lock.unlock();
                         auto t4 = Clock::now();
                         // printf("Time compression thread slept %d ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count());
@@ -128,9 +134,8 @@ public:
 	}
 
 	void decompress_tensor() {
-		
+		int size = decompression_stack.size();
 		while(true) {
-			printf("I'm awake!\n");
 			tensor_t<value_type> * t = nullptr;
 			std::unique_lock<std::mutex> lock(d_queue_lock);
                         auto t3 = Clock::now();

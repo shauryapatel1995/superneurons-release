@@ -54,6 +54,7 @@ private:
     
     zfp_field* field;
     zfp_stream* zfp;
+    // cudaStream_t stream;
     size_t bufsize; 
     size_t compressed_size;     
     size_t GPU_id;                               //this identifies the GPU RAM
@@ -161,6 +162,7 @@ public:
         }
         
 #ifdef LIVENESS
+	// cudaStreamCreate(&stream);
 	// Liveness activated then don't save memory for Data or conv on gpus.
         if(this->data_t != CONV_BUFF && this->data_t != DATA ) {
             acquireSpaceGPU(n*c*h*w);

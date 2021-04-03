@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
     char* checkpoint_file;
     
     if( argc != 4 ) {
-        printf("please run as ./alexnet batch_size training_iters\n");
+        printf("please run as ./alexnet batch_size training_iters do_compress\n");
         return 0;
     }
     

@@ -202,7 +202,7 @@ train_mean_file = (char *) "/home/shauryakamle/superneurons-release/cifar-10-bat
     const size_t tracking_window = train_imgs / batch_size;
 
     n.train(200000, tracking_window, 500);
-    // n.train(1, tracking_window, 500);
+    // n.train(4, tracking_window, 500);
     cudaDeviceReset();
 }
 

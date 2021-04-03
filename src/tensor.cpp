@@ -128,7 +128,6 @@ void tensor_t<value_type>::compress() {
     if(true) {
 	 
          // this->field = zfp_field_1d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C * this->H * this->W);
-         
         this->field = zfp_field_3d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
 	// printf("Current size: %d", sizeof(float)*this->N*this->C*this->H*this->W);
         this->zfp = zfp_stream_open(NULL);                  // compressed stream and parameters
@@ -138,41 +137,40 @@ void tensor_t<value_type>::compress() {
 	size_t bufsize = zfp_stream_maximum_size(this->zfp, this->field);  
 	
 	void* buffer; 
-	checkCudaErrors(cudaMalloc(&buffer, bufsize));                 
-	// buffer = acquire_reusable_buffer(bufsize);
+	// checkCudaErrors(cudaMalloc(&buffer, bufsize));                 
+	buffer = acquire_reusable_buffer(bufsize);
         // associate bit stream with allocated buffer
 	bitstream* stream = stream_open(buffer, bufsize);         
 	zfp_stream_set_bit_stream(this->zfp, stream);                   
-	// zfp_stream_rewind(this->zfp);                                  
-	
+	zfp_stream_rewind(this->zfp);                                  
+       
 	// Compress on gpu.
 	if (zfp_stream_set_execution(zfp, zfp_exec_cuda)) {
 		size_t zfpsize = zfp_compress(this->zfp, this->field);             
-                if(!zfpsize) 
+		if(!zfpsize) 
 			printf("The compression was unsuccessful\n");
 		// printf("Compressed zfp size is %d\n", zfpsize);
 		this->compressed_size = zfpsize; 
 		// printf("Compressed size %d", this->compressed_size);
-		 checkCudaErrors(cudaMalloc((void **)&this->compressed_gpu_ptr, zfpsize));
+		/*  checkCudaErrors(cudaMalloc((void **)&this->compressed_gpu_ptr, zfpsize));
 		// Copy to compressed region.
-		  checkCudaErrors(
-               cudaMemcpy((void *) this->compressed_gpu_ptr,
+		   checkCudaErrors(
+                cudaMemcpy((void *) this->compressed_gpu_ptr,
                        (void *) buffer,
-                  zfpsize, cudaMemcpyDeviceToDevice));
-	         checkCudaErrors(cudaFree(buffer)); 
+                   zfpsize, cudaMemcpyDeviceToDevice));
+	          checkCudaErrors(cudaFree(buffer)); */
 		// printf("compress tensor %p layer %d gpu %p  curt: %d\n", this, this->get_layer_id(), gpu_ptr, get_state());
-		// this->compressed_gpu_ptr = buffer; 
-		// update_reusable_pointer(this->compressed_size);
-		// stream_close(stream);
+		 this->compressed_gpu_ptr = buffer; 
+		 update_reusable_pointer(this->compressed_size);
+		 stream_close(stream);
 	} else {
 		printf("Cuda not available!\n");
 	}
     } 
     // free gpu space
-    freeSpaceGPU(GPU_COM);
+    // freeSpaceGPU(GPU_COM);
     // checkCudaErrors(cudaFree((void *) this->gpu_ptr));
     // this->gpu_ptr = NULL;
-       
     // checkCudaErrors(cudaFree(this->gpu_ptr));
     zfp_field_free(this->field); 
     // set the state to compressed.
@@ -184,6 +182,7 @@ void tensor_t<value_type>::compress() {
 // Tensor decompression. 
 template <class value_type> 
 void tensor_t<value_type>::decompress() {
+   
     // printf("Decompressing\n");
     // std::unique_lock<std::mutex> lock(this->state_lock);
     if(this->get_state() != GPU_COM && this->get_state() != GPU_WORK) {
@@ -209,7 +208,7 @@ void tensor_t<value_type>::decompress() {
     // decompress the tensor. 
     size_t decompress_size = this->N * this->H * this->C * this->W;
     
-    acquireSpaceGPU(decompress_size);	
+    // acquireSpaceGPU(decompress_size);	
     // cudaMalloc(&this->gpu_ptr, sizeof(float)*decompress_size);
     if(this->gpu_ptr == NULL) {
 	printf("Null ptr haha!\n");
@@ -217,24 +216,24 @@ void tensor_t<value_type>::decompress() {
     this->field = zfp_field_3d(this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
     zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false); 
     int bufsize = zfp_stream_maximum_size(zfp, field);
-    void * buffer;
-      cudaMalloc(&buffer, bufsize);                           // storage for compressed stream   
+    // void * buffer;
+    // cudaMalloc(&buffer, bufsize);                           // storage for compressed stream   
     // buffer = acquire_decompress_reusable_buffer(bufsize);
-     checkCudaErrors(cudaMemcpy((void *) buffer, (void *) this->compressed_gpu_ptr, this->compressed_size, cudaMemcpyDeviceToDevice));
+     // checkCudaErrors(cudaMemcpy((void *) buffer, (void *) this->compressed_gpu_ptr, this->compressed_size, cudaMemcpyDeviceToDevice));
     
 
-     bitstream* stream = stream_open(buffer, bufsize);         // bit stream to compress to
-    // bitstream* stream = stream_open(this->compressed_gpu_ptr, bufsize);         // bit stream to compress to
+    //  bitstream* stream = stream_open(buffer, bufsize);         // bit stream to compress to
+    bitstream* stream = stream_open(this->compressed_gpu_ptr, bufsize);         // bit stream to compress to
     zfp_stream_set_bit_stream(zfp, stream);                   // associate with compressed stream
-    // zfp_stream_rewind(zfp);                                   // rewind stream to beginning    
+    zfp_stream_rewind(zfp);                                   // rewind stream to beginning    
     
     if (zfp_stream_set_execution(zfp, zfp_exec_cuda)) {
     	if(!zfp_decompress(zfp, field)){
             printf("The decompression was unsuccessful\n");
 	}
-          checkCudaErrors(cudaFree(buffer));
-   	  checkCudaErrors(cudaFree(this->compressed_gpu_ptr)); 
-        // delete_compressed_tensor(this->compressed_size); 
+         // checkCudaErrors(cudaFree(buffer));
+   	 // checkCudaErrors(cudaFree(this->compressed_gpu_ptr)); 
+        delete_compressed_tensor(this->compressed_size); 
     } else {
 	printf("Decompression not possible\n");
     } 

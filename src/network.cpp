@@ -158,17 +158,18 @@ void network_t<value_type>::forward_kernel(network_stage stage, base_layer_t<val
             int layer_id = net_comp_route[i].first;
 	        // printf("Forward on layer %d\n", layer_id);
             // stash tensors
+            // cudaMemInfo here.
             mem_controller.stash_tensor( layer_id, FORWARD , NET_TRAIN);
-
             // execution
             base_layer_t<value_type>* b = (base_layer_t<value_type>*) net_layers.find(layer_id)->second;
-	    
+	    // signal to start compression here. 
             *loss = b->forward(stage, &cublas_handle, &cudnn_handle, reg);
 	    // if(loss->size() > 0) 
 		//    printf("Loss at layer %d: %f\n", b->get_base_id(), loss->at(0));
             // update tensors
             mem_controller.update_tensor_state(layer_id, FORWARD, stage);
-
+	    //cudaMeminfo here.
+	    // printf("Mem usage %f, individual usage %f, %f\n", mem3 - mem1);
 #ifdef DEBUG
             printf("forward finish layer %zu %d\n", i, layer_id);
 #endif
@@ -227,15 +228,16 @@ void network_t<value_type>::backward_kernel(base_layer_t<value_type>* b) {
     
     std::vector<std::pair<int, net_comp> > net_comp_route = reg->get_net_comp_route();
     std::map<int, void* > net_layers  = reg->get_net_layers();
-    
     for( size_t i = 0; i < net_comp_route.size(); i++ ) {
         if( net_comp_route[i].second == BACKWARD ) {
             int layer_id = net_comp_route[i].first;
             // get tensors
             mem_controller.stash_tensor( layer_id, BACKWARD , NET_TRAIN);
+
             base_layer_t<value_type>* b = (base_layer_t<value_type>*) net_layers.find(layer_id)->second;
             b->backward(NET_TRAIN, &cublas_handle, &cudnn_handle, reg);
             mem_controller.update_tensor_state(layer_id, BACKWARD, NET_TRAIN);
+	    // printf("Used mem after backward: %f, individual usage %f, %f\n", mem2 - mem1, BYTE_TO_MB(mem1), BYTE_TO_MB(mem2));
         }
     }
     value_type sum = reg->get_grad_sqrsum();

@@ -10,8 +10,6 @@ void * decompress_reusable_buffer_space;
 int decompress_reusable_buffer_size = 0;
 bool reusable_buffer_allocated = false; 
 
-
-
 blasx_gpu_singleton* blasx_gpu_singleton::instance = NULL;
 
 // Initialize a slab on a GPU given its id.
