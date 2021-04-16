@@ -10,6 +10,7 @@
 #include <util/lru.h>
 #include <liveness.h>
 #include <recompute.h>
+#include <compressor.h>
 
 namespace SuperNeurons {
 
@@ -63,9 +64,9 @@ public:
     
     void reset_tensor_state();
     
-    void stash_tensor(int layer_id, net_comp dir, network_stage stage);
+    void stash_tensor(int layer_id, net_comp dir, network_stage stage, Compressor<value_type>& compressor);
     
-    void update_tensor_state(int layer_id, net_comp dir, network_stage stage);
+    void update_tensor_state(int layer_id, net_comp dir, network_stage stage, Compressor<value_type>& compressor);
 };
     
 } // namespace SuperNeurons

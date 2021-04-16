@@ -30,7 +30,7 @@ private:
     std::vector<std::vector<std::pair<int, net_comp> > > *subsequent_backward;
 
     std::vector<LAYER> CHECKPOINT_LAYERS;
-    Compressor<value_type> compressor;     
+    // Compressor<value_type> compressor;     
     
     const int max_layer_id;
 
@@ -126,9 +126,9 @@ public:
     
 }
 
-    void stash(int layer_id, net_comp dir);
+    void stash(int layer_id, net_comp dir, Compressor<value_type>& compressor);
 
-    void update(int layer_id, net_comp dir);
+    void update(int layer_id, net_comp dir, Compressor<value_type>& compressor);
 };
 
 

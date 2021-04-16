@@ -118,6 +118,7 @@ public:
 
     registry_t():train_data(NULL), train_label(NULL), test_data(NULL), test_label(NULL) {
         checkCublasErrors( cublasCreate(&cublas_handle) );
+        // return true;
     }
 
     ~registry_t() {

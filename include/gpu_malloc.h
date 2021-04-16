@@ -37,7 +37,6 @@ void   update_reusable_pointer(int zfp_size);
 void   update_reusable_buffer_size(int tensor_size);
 void   max_buffer_size(int buf_size);
 void   delete_compressed_tensor(int delete_size);
-
 class blasx_gpu_singleton {
 private:
     std::map<int, blasx_gpu_malloc_t*> malloc_gpus;

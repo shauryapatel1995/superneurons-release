@@ -159,15 +159,16 @@ void network_t<value_type>::forward_kernel(network_stage stage, base_layer_t<val
 	        // printf("Forward on layer %d\n", layer_id);
             // stash tensors
             // cudaMemInfo here.
-            mem_controller.stash_tensor( layer_id, FORWARD , NET_TRAIN);
+            mem_controller.stash_tensor( layer_id, FORWARD , NET_TRAIN, compressor);
             // execution
             base_layer_t<value_type>* b = (base_layer_t<value_type>*) net_layers.find(layer_id)->second;
-	    // signal to start compression here. 
+	    // signal to start compression here.
+	    compressor.trigger_compress(); 
             *loss = b->forward(stage, &cublas_handle, &cudnn_handle, reg);
 	    // if(loss->size() > 0) 
 		//    printf("Loss at layer %d: %f\n", b->get_base_id(), loss->at(0));
             // update tensors
-            mem_controller.update_tensor_state(layer_id, FORWARD, stage);
+            mem_controller.update_tensor_state(layer_id, FORWARD, stage, compressor);
 	    //cudaMeminfo here.
 	    // printf("Mem usage %f, individual usage %f, %f\n", mem3 - mem1);
 #ifdef DEBUG
@@ -186,7 +187,7 @@ void network_t<value_type>::backward_with_update_kernel(base_layer_t<value_type>
         if( net_comp_route[i].second == BACKWARD ) {
             int layer_id = net_comp_route[i].first;
             // get tensors
-            mem_controller.stash_tensor( layer_id, BACKWARD , NET_TRAIN);
+            mem_controller.stash_tensor( layer_id, BACKWARD , NET_TRAIN, compressor);
             // execution
             base_layer_t<value_type>* b = (base_layer_t<value_type>*) net_layers.find(layer_id)->second;
             b->backward(NET_TRAIN, &cublas_handle, &cudnn_handle, reg);
@@ -202,7 +203,7 @@ void network_t<value_type>::backward_with_update_kernel(base_layer_t<value_type>
             */
             b->update(&cublas_handle, iter, solver);
             // update tensors
-            mem_controller.update_tensor_state(layer_id, BACKWARD, NET_TRAIN);
+            mem_controller.update_tensor_state(layer_id, BACKWARD, NET_TRAIN, compressor);
 
 #ifdef DEBUG
             printf("backward finish layer %d\n", layer_id);
@@ -232,11 +233,12 @@ void network_t<value_type>::backward_kernel(base_layer_t<value_type>* b) {
         if( net_comp_route[i].second == BACKWARD ) {
             int layer_id = net_comp_route[i].first;
             // get tensors
-            mem_controller.stash_tensor( layer_id, BACKWARD , NET_TRAIN);
+            mem_controller.stash_tensor( layer_id, BACKWARD , NET_TRAIN, compressor);
 
             base_layer_t<value_type>* b = (base_layer_t<value_type>*) net_layers.find(layer_id)->second;
-            b->backward(NET_TRAIN, &cublas_handle, &cudnn_handle, reg);
-            mem_controller.update_tensor_state(layer_id, BACKWARD, NET_TRAIN);
+            compressor.trigger_decompress();
+	    b->backward(NET_TRAIN, &cublas_handle, &cudnn_handle, reg);
+            mem_controller.update_tensor_state(layer_id, BACKWARD, NET_TRAIN, compressor);
 	    // printf("Used mem after backward: %f, individual usage %f, %f\n", mem2 - mem1, BYTE_TO_MB(mem1), BYTE_TO_MB(mem2));
         }
     }
@@ -256,13 +258,14 @@ void network_t<value_type>::forward_test(network_stage stage, base_layer_t<value
             // get the necessary tensors sorted out before calling forward
             int layer_id = net_test_route[i].first;
             // stash tensors
-            mem_controller.stash_tensor( layer_id, FORWARD , NET_INFER);
+            mem_controller.stash_tensor( layer_id, FORWARD , NET_INFER, compressor);
             
             base_layer_t<value_type>* b = (base_layer_t<value_type>*) net_layers.find(layer_id)->second;
-            *acc = b->forward(stage, &cublas_handle, &cudnn_handle, reg);
+            compressor.trigger_compress();
+	    *acc = b->forward(stage, &cublas_handle, &cudnn_handle, reg);
             
             // update tensors
-            mem_controller.update_tensor_state(layer_id, FORWARD, stage);
+            mem_controller.update_tensor_state(layer_id, FORWARD, stage, compressor);
         }
     }
     mem_controller.reset_tensor_state();

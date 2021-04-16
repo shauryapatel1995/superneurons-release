@@ -212,7 +212,7 @@ void mem_controller_t<value_type>::print_layer_type(int layer_id, net_comp dir) 
     Stash tensors is basically get the required tensors on the GPU.
 */
 template <class value_type>
-void mem_controller_t<value_type>::stash_tensor(int layer_id, net_comp dir, network_stage stage) {
+void mem_controller_t<value_type>::stash_tensor(int layer_id, net_comp dir, network_stage stage, Compressor<value_type>& compressor) {
 
 #ifdef DEBUG
     auto tmp = reg->get_net_layers().find(layer_id);
@@ -220,7 +220,7 @@ void mem_controller_t<value_type>::stash_tensor(int layer_id, net_comp dir, netw
 
 #ifdef LIVENESS
     // layer_id, forward.
-    live_anls->stash(layer_id, dir);
+    live_anls->stash(layer_id, dir, compressor);
     print_regulated_tensors();
 #endif
 
@@ -231,7 +231,7 @@ void mem_controller_t<value_type>::stash_tensor(int layer_id, net_comp dir, netw
 
 
 template <class value_type>
-void mem_controller_t<value_type>::update_tensor_state(int layer_id, net_comp dir, network_stage stage) {
+void mem_controller_t<value_type>::update_tensor_state(int layer_id, net_comp dir, network_stage stage, Compressor<value_type>& compressor) {
 
 #ifdef BENCHMARK
     // collect conv buff size
@@ -245,7 +245,7 @@ void mem_controller_t<value_type>::update_tensor_state(int layer_id, net_comp di
 #endif
 
 #ifdef LIVENESS
-    live_anls->update(layer_id, dir);
+    live_anls->update(layer_id, dir, compressor);
 #endif
 #ifdef RECOMPUTE_ON
     recomp->offload_to_recompute(layer_id, dir, stage);

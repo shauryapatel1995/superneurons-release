@@ -17,6 +17,7 @@
 #include <layer/cudnn_convolution_layer.h>
 #include <util/saver.h>
 #include <string>
+#include <compressor.h>
 
 namespace SuperNeurons{
 
@@ -41,6 +42,7 @@ private:
     cublasHandle_t  cublas_handle;
     cudnnDataType_t cudnn_data_type;
     cudaStream_t stream = stream_singleton::get_compute_stream();
+    Compressor<value_type> compressor;
     bool do_compress; 
 
 
@@ -318,9 +320,10 @@ public:
 
             double iter_start = get_cur_time();
             /*--network calculation--*/
-            loss = forward(NET_TRAIN);
+	    compressor.start_compress();
+	    loss = forward(NET_TRAIN);
             // Wake up decompressor thread for backward.
-            // printf("Backward\n");   
+            compressor.start_decompress();
 	    backward();
             update(i);
             //backward_with_update(i);

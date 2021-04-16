@@ -65,7 +65,8 @@ public:
     ~image_reader_t() {
         delete img_reader;
         delete label_reader;
-        checkCudaErrors(cudaFreeHost(img_tmp));
+        printf("img_tmp %p\n", img_tmp);
+	checkCudaErrors(cudaFreeHost(img_tmp));
         checkCudaErrors(cudaFreeHost(label_tmp));
     }
 

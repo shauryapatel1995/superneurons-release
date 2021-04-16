@@ -1,4 +1,5 @@
-#if !defined(_COMPRESSOR_H_)
+#if !defined(COMPRESSOR_H)
+#define COMPRESSOR_H
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -19,20 +20,19 @@ class Compressor {
 
 private:
 	std::mutex queue_lock, d_queue_lock;
-	std::condition_variable c, d;
+	std::condition_variable c, d, c_empty;
 	std::queue<tensor_t<value_type>* > compression_queue;
 	std::queue<tensor_t<value_type>* > decompression_queue;
 	std::stack<tensor_t<value_type>* > decompression_stack;
 	std::unordered_set<tensor_t<value_type> *> pending_tensors;
-	int counter; 
+	int compress_counter = 0, decompress_counter = 3; 
 	std::thread t1, t2, t3;
         bool decompress = false; 
 
 public:
 	Compressor() {
-                counter = 4; 
 		t1 = std::thread(&SuperNeurons::Compressor<value_type>::compress_tensor, this);	
-		// t2 = std::thread(&SuperNeurons::Compressor<value_type>::decompress_tensor, this);
+		t2 = std::thread(&SuperNeurons::Compressor<value_type>::decompress_tensor, this);
 		// t2 = std::thread(&SuperNeurons::Compressor<value_type>::decompress_tensor, this);
 		// t2 = std::thread(&SuperNeurons::Compressor<value_type>::compress_tensor, this);
 		// t3 = std::thread(&SuperNeurons::Compressor<value_type>::compress_tensor, this);
@@ -55,57 +55,46 @@ public:
 		//t3.join();
 	}
 	
-	void start_decompress() {
-		
-		while(compression_queue.size() != 0) {
-			printf("Compression queue size %d\n", compression_queue.size());
-		}
-		if(!decompress) {
-			printf("Starting decompress\n");
-			decompress = true; 
-			t2 = std::thread(&SuperNeurons::Compressor<value_type>::decompress_tensor, this);
-		}
-		/*if(counter < 3) {
-			++counter; 
-			printf("Called %d counter\n", counter);
-			return;
-		} */
-                
-		std::lock_guard<std::mutex> lock(d_queue_lock);
-		/*tensor_t<value_type> * t = nullptr;
-		// printf("%d is the answer\n", _t == decompression_stack.top());
-		if(pending_tensors.count(_t) > 0) {
-			// printf("We tried to look in pending tensors\n");
-			while(_t != t) {
-				 if(decompression_stack.empty()) {
-                                	break;
-                        	}
-                        	t = decompression_stack.top(); decompression_stack.pop();
-                        	decompression_queue.push(t);
-				pending_tensors.erase(t);
-                	}
-                	d.notify_one();
+	// Start the compress phase and stop the decompress phase.
+	void start_compress() {
+		std::lock_guard<std::mutex> lock(queue_lock);
+		decompress = false;	
+		c.notify_all();
+	}
 	
-		} else {
-		for(int i = 0; i < 3; i++) {
-			if(decompression_stack.empty()) {
-				break;
-			}
-			t = decompression_stack.top(); decompression_stack.pop();
-			decompression_queue.push(t);
-			pending_tensors.erase(t);
-		} */
-		d.notify_one();
-                // printf("Decompression stack size %d, Decompression queue size %d\n", decompression_stack.size() , decompression_queue.size());	
-		//}
+	void trigger_compress() {
+		std::lock_guard<std::mutex> lock(queue_lock);
+		if(!compression_queue.empty())
+			compress_counter++;
+		c.notify_all();
+	}
+	
+	void trigger_decompress() {
+		std::lock_guard<std::mutex> lock(queue_lock);
+                if(!decompression_stack.empty())
+                        decompress_counter++;
+                
+		c.notify_all();	
+	}
+	
+	// Start the decompress phase and stop the compress phase.
+	void start_decompress() {
+		std::unique_lock<std::mutex> lock(queue_lock);
+		compress_counter += compression_queue.size(); 
+		c.notify_all();
+		if(!compression_queue.empty()) {
+			c_empty.wait(lock);
+		}
+		decompress = true;
+		decompress_counter = 3; 
+		c.notify_all();	
+		lock.unlock();
 	}
 	
 	void add_tensor_to_queue(tensor_t<value_type>* t) {
 		std::lock_guard<std::mutex> lock(queue_lock);
-		// printf("Adding to queue");
 		compression_queue.push(t);
-		// printf("Size of queue is %d", compression_queue.size());
-		c.notify_one();
+		c.notify_all();
 	}
 
 	void compress_tensor() {
@@ -113,10 +102,17 @@ public:
 			tensor_t<value_type> * t = nullptr;
 			std::unique_lock<std::mutex> lock(queue_lock);
                         auto t3 = Clock::now();
-			while(compression_queue.empty()) {
+			while(compression_queue.empty() || decompress || !compress_counter) {
+				//printf("Sleeping compression queue size is %d and decompress is %d\n", compression_queue.size(), decompress);
+				// printf("Compress counter is %d\n");
+				if(compression_queue.empty())
+					c_empty.notify_all();
 				c.wait(lock);
 			}
+	
 			t = compression_queue.front(); compression_queue.pop();
+			compress_counter--;
+			// printf("Size of compression queue %d\n", compression_queue.size());
 			decompression_stack.push(t);
 			lock.unlock();
                         auto t4 = Clock::now();
@@ -137,12 +133,14 @@ public:
 		int size = decompression_stack.size();
 		while(true) {
 			tensor_t<value_type> * t = nullptr;
-			std::unique_lock<std::mutex> lock(d_queue_lock);
+			std::unique_lock<std::mutex> lock(queue_lock);
                         auto t3 = Clock::now();
-			while(decompression_stack.empty()) {
-				d.wait(lock);
+			while(decompression_stack.empty() || !decompress || !decompress_counter) {
+				c.wait(lock);
 			}
 			t = decompression_stack.top(); decompression_stack.pop();
+			decompress_counter--;
+			// printf("Size of decompression stack: %d\n", decompression_stack.size());
 			lock.unlock();
                         auto t4 = Clock::now();
                         // printf("Time compression thread slept %d ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count());

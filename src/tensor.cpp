@@ -168,7 +168,7 @@ void tensor_t<value_type>::compress() {
 	}
     } 
     // free gpu space
-    // freeSpaceGPU(GPU_COM);
+    freeSpaceGPU(GPU_COM);
     // checkCudaErrors(cudaFree((void *) this->gpu_ptr));
     // this->gpu_ptr = NULL;
     // checkCudaErrors(cudaFree(this->gpu_ptr));
@@ -189,15 +189,12 @@ void tensor_t<value_type>::decompress() {
 	printf("The state isn't proper %d\n", this->get_state());
 	return; 
     }
-    auto t1 = Clock::now();
     while(this->get_state() == GPU_WORK) {
     	// busy wait.
     	// printf("Busy waiting");
     	// compress_decompress_signal.wait(lock);
     } 
     // lock.unlock();
-    auto t2 = Clock::now();
-    auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
     /*if(time > 0) 
 	    printf("Decompression sync wait time: %d ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
     */
@@ -208,11 +205,8 @@ void tensor_t<value_type>::decompress() {
     // decompress the tensor. 
     size_t decompress_size = this->N * this->H * this->C * this->W;
     
-    // acquireSpaceGPU(decompress_size);	
+    acquireSpaceGPU(decompress_size);	
     // cudaMalloc(&this->gpu_ptr, sizeof(float)*decompress_size);
-    if(this->gpu_ptr == NULL) {
-	printf("Null ptr haha!\n");
-    }
     this->field = zfp_field_3d(this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
     zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false); 
     int bufsize = zfp_stream_maximum_size(zfp, field);
@@ -267,12 +261,12 @@ void tensor_t<value_type>::CPUtoGPU() {
         into_cnt += 1;
     }
 
-    if(this->data_t == DATA && (this->get_state() == GPU_COM || this->get_state() == GPU_WORK)) {
+    /* if(this->data_t == DATA && (this->get_state() == GPU_COM || this->get_state() == GPU_WORK)) {
         // compressed tensor use decompress.
          
         this->decompress();
         return; 
-    } 
+    } */
 
     if (this->get_state() == GPU_FUL) {
         if (data_t == DATA) {

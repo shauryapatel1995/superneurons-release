@@ -278,7 +278,7 @@ void liveness_analysis_t<value_type>::set_compress(std::vector<std::vector<void 
             bool canCompress = is_compressible_afterwards(layer_id, t);
             if(canCompress) {
                 // printf("Compress tensor %d at layer %d\n", t->get_layer_id(), layer_id);
-                // t->reserve_space_for_compression();
+                t->reserve_space_for_compression();
                 compress->operator[](layer_id).push_back((void *)t);
             }
                     
@@ -290,7 +290,7 @@ void liveness_analysis_t<value_type>::set_compress(std::vector<std::vector<void 
 
 
 template<class value_type>
-void liveness_analysis_t<value_type>::stash(int layer_id, net_comp dir) {
+void liveness_analysis_t<value_type>::stash(int layer_id, net_comp dir, Compressor<value_type>& compressor) {
     //    std::vector<tensor_t<value_type>* >* tensors = NULL;
 //    if (dir == FORWARD) {
 //        tensors = reg->get_forward_dependency(layer_id);
@@ -337,18 +337,14 @@ void liveness_analysis_t<value_type>::stash(int layer_id, net_comp dir) {
             // No change needed here for decompress.
             // Check t state if it is in compression wait till it decompresses. 
             // If it is compressed put it to the queue and then wait.
-            /*if(dir == BACKWARD && (t->get_state() == GPU_COM || t->get_state() == GPU_WORK)) {
-		// printf("Calling decompress\n"); 
-		this->compressor.start_decompress(t);
-		while(t->get_state() == GPU_COM || t->get_state() == GPU_WORK) { 
-		    // Busy wait.
-		    // printf("Im stuck"); 
-		     
-		}	        
-		// printf("Finished call\n");
-	    } else { */
+            if(dir == BACKWARD && (t->get_state() == GPU_COM || t->get_state() == GPU_WORK)) {
+		while(dir == BACKWARD && (t->get_state() == GPU_COM || t->get_state() == GPU_WORK)) {
+			// waiting for decompress to finish.
+			// printf("I am stuck\n");
+	    	} 
+	    } else { 
 	        t->CPUtoGPU();
-	    // } 
+	    } 
         }
     }
     
@@ -367,7 +363,7 @@ void liveness_analysis_t<value_type>::stash(int layer_id, net_comp dir) {
 }
 
 template<class value_type>
-void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir) {
+void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir, Compressor<value_type>& compressor) {
     //    // we only do free and offload to cpu here
 //    typename std::map<tensor_t<value_type>*, mem_mode>::iterator it = regulated_tensors.begin();
 //    for ( it = regulated_tensors.begin(); it != regulated_tensors.end(); it++ ) {
@@ -404,7 +400,7 @@ void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir) {
             tensor_t<value_type> *t = *it;
 	    // t->compress();
 	    t->atomic_set_state(GPU_WORK);
-	    this->compressor.add_tensor_to_queue(t);
+	    compressor.add_tensor_to_queue(t);
         }
     }
      
@@ -412,7 +408,7 @@ void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir) {
     for (auto it = outs->operator[](layer_id).begin(); it != outs->operator[](layer_id).end(); ++it) {
         tensor_t<value_type> *t = *it;
 	// Don't free already compressed tensors.
-	if(t->get_state() == GPU_COM || t->get_state() == GPU_WORK) 
+	if(t->get_state() == GPU_COM || t->get_state() == GPU_WORK)
 		continue;
 	t->free_gpu_space(VOID);
     
