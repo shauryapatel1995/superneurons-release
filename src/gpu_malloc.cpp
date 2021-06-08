@@ -1,4 +1,7 @@
 #include <gpu_malloc.h>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 #define gpu_malloc_info
 
 // Performance improvement for compression using reusable buffer.
@@ -9,6 +12,11 @@ int max_buf_size = 0;
 void * decompress_reusable_buffer_space;
 int decompress_reusable_buffer_size = 0;
 bool reusable_buffer_allocated = false; 
+std::queue<reusable_gpu_space*> * reusable_space_queue;
+bool reusable_space_allocated = false; 
+size_t reusable_space_size = 0;
+std::mutex q_lock;
+std::condition_variable tensor_available; 
 
 blasx_gpu_singleton* blasx_gpu_singleton::instance = NULL;
 
@@ -231,7 +239,7 @@ void * acquire_reusable_buffer(int buf_size) {
 		return reusable_buffer_space;
 	}
 
-	return reusable_buffer_space; 
+	return reusable_buffer_space;
 
 }
 
@@ -256,6 +264,62 @@ void * acquire_decompress_reusable_buffer(int compressed_size) {
 		}
 	}*/
 	return reusable_buffer_space + compressed_size; 
+}
+
+void register_reusable_space(size_t size) {
+	if(size > reusable_space_size) 
+		reusable_space_size = size; 
+}
+
+void register_test_tensors() {
+	std::lock_guard<std::mutex> lock(q_lock);
+	for(int i = 0; i < 200; i++) {
+		auto x = new reusable_gpu_space();
+		cudaMalloc(&(x->gpu_ptr), reusable_space_size);
+		x->tensor_counter = 0; 
+		reusable_space_queue->push(x);
+	}
+}
+
+void * acquire_reusable_gpu_space() {
+	std::unique_lock<std::mutex> lock(q_lock);
+
+	if(!reusable_space_allocated) {
+		// Initialize reusable spaces. 
+		reusable_space_queue = new std::queue<reusable_gpu_space *>();
+		for(int i = 0; i < 5; i++) {
+			auto x = new reusable_gpu_space();	
+			cudaMalloc(&(x->gpu_ptr), reusable_space_size);	
+			x->tensor_counter = 0; 
+			reusable_space_queue->push(x);	
+		
+		}
+		printf("Allocated reusable spaces of size %zu and queue size is %d\n", reusable_space_size, reusable_space_queue->size());
+		reusable_space_allocated = true;
+	}
+	// printf("Trying to acquire tensor, queue size is %d\n",  reusable_space_queue->size());
+	while(reusable_space_queue->size() == 0) {
+		tensor_available.wait(lock);	
+	}
+	
+	auto x = reusable_space_queue->front(); reusable_space_queue->pop();
+	return x;
+}
+
+void free_test_tensors() {
+	std::lock_guard<std::mutex> lock(q_lock);
+	for(int i = 0; i < 200; i++) {
+		auto x = reusable_space_queue->front(); reusable_space_queue->pop();
+		cudaFree(x->gpu_ptr);
+	}
+}
+
+void free_reusable_gpu_space(reusable_gpu_space * reusable_space) {
+	std::lock_guard<std::mutex> lock(q_lock);
+	// printf("Freeing memory current queue size is %d\n",  reusable_space_queue->size());
+	reusable_space->tensor_counter = 0;
+	reusable_space_queue->push(reusable_space);
+	tensor_available.notify_all();
 }
 
 

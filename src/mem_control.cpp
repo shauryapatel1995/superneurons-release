@@ -245,7 +245,7 @@ void mem_controller_t<value_type>::update_tensor_state(int layer_id, net_comp di
 #endif
 
 #ifdef LIVENESS
-    live_anls->update(layer_id, dir, compressor);
+    live_anls->update(layer_id, dir, stage, compressor);
 #endif
 #ifdef RECOMPUTE_ON
     recomp->offload_to_recompute(layer_id, dir, stage);

@@ -296,7 +296,8 @@ int main(int argc, char **argv) {
     char *train_mean_file;
     char *checkpoint;
     int lay_num = 50;
-
+    int do_compress = atoi(argv[1]);
+	
     if (lay_num < 50) {
         fprintf(stderr, "not implement for the layernum=%d\n", lay_num);
         exit(-1);
@@ -304,19 +305,25 @@ int main(int argc, char **argv) {
 
     base_solver_t<float> *solver = (base_solver_t<float> *) new nesterov_solver_t<float>(0.1, 0.0004, 0.9);
     solver->set_lr_decay_policy(ITER, {500000, 1000000}, {0.01, 0.001});
-    network_t<float> n(solver);
+    network_t<float> n(solver, do_compress);
 
-    train_mean_file = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/train_mean.bin";
+    /*train_mean_file = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/train_mean.bin";
     train_image_bin = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/train_data_0.bin";
     train_label_bin = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/train_label_0.bin";
     test_image_bin  = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/val_data_0.bin";
     test_label_bin  = (char *) "/data/lwang53/dataset/imgnet/bin_256x256_imgnet/val_label_0.bin";
-    checkpoint      = (char *) "/data/lwang53/checkpoints/residual_50";
+    checkpoint      = (char *) "/data/lwang53/checkpoints/residual_50";*/
+    train_mean_file = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/train_mean.bin";
+    train_image_bin = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_data_0.bin";
+    train_label_bin = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_label_0.bin";
+    test_image_bin  = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_data_0.bin";
+    test_label_bin  = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_label_0.bin";
+    checkpoint = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/alexnet_checkpoint"; 
 
     network_saver* saver = new network_saver_impl<float>(checkpoint, n.get_registry());
     install_signal_processor(saver);
 
-    const size_t batch_size = 36; //train and test must be same
+    const size_t batch_size = 100; //train and test must be same
     const size_t C = 3, H = 227, W = 227;
     
     preprocessor<float>* processor_train = new preprocessor<float>();

@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
 	printf("Please provide compression info!\n");
 	return 0;	
     }
-    bool do_compress = atoi(argv[1]);
+    bool do_compress = atoi(argv[2]);
     base_solver_t<float>* solver = (base_solver_t<float>*) new nesterov_solver_t<float>(0.01, 0.0004, 0.9);
     solver->set_lr_decay_policy(ITER, {400, 50000, 100000}, {0.1, 0.01, 0.001});
 
@@ -88,7 +88,7 @@ train_mean_file = (char *) "/home/shauryakamle/superneurons-release/cifar-10-bat
     test_image_bin  = (char *) "/data/lwang53/cifar/cifar10_test_image_0.bin";
     test_label_bin  = (char *) "/data/lwang53/cifar/cifar10_test_label_0.bin"; */
 
-    const size_t batch_size = 100; //train and test must be same
+    const size_t batch_size = atoi(argv[1]);; //train and test must be same
     const size_t C = 3, H = 32, W = 32;
 
 

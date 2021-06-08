@@ -159,12 +159,14 @@ void network_t<value_type>::forward_kernel(network_stage stage, base_layer_t<val
 	        // printf("Forward on layer %d\n", layer_id);
             // stash tensors
             // cudaMemInfo here.
+           
             mem_controller.stash_tensor( layer_id, FORWARD , NET_TRAIN, compressor);
             // execution
             base_layer_t<value_type>* b = (base_layer_t<value_type>*) net_layers.find(layer_id)->second;
 	    // signal to start compression here.
-	    compressor.trigger_compress(); 
+	    // compressor.trigger_compress(); 
             *loss = b->forward(stage, &cublas_handle, &cudnn_handle, reg);
+            // compressor.trigger_free();
 	    // if(loss->size() > 0) 
 		//    printf("Loss at layer %d: %f\n", b->get_base_id(), loss->at(0));
             // update tensors
@@ -233,10 +235,10 @@ void network_t<value_type>::backward_kernel(base_layer_t<value_type>* b) {
         if( net_comp_route[i].second == BACKWARD ) {
             int layer_id = net_comp_route[i].first;
             // get tensors
+            compressor.trigger_decompress();
             mem_controller.stash_tensor( layer_id, BACKWARD , NET_TRAIN, compressor);
 
             base_layer_t<value_type>* b = (base_layer_t<value_type>*) net_layers.find(layer_id)->second;
-            compressor.trigger_decompress();
 	    b->backward(NET_TRAIN, &cublas_handle, &cudnn_handle, reg);
             mem_controller.update_tensor_state(layer_id, BACKWARD, NET_TRAIN, compressor);
 	    // printf("Used mem after backward: %f, individual usage %f, %f\n", mem2 - mem1, BYTE_TO_MB(mem1), BYTE_TO_MB(mem2));
@@ -248,7 +250,8 @@ void network_t<value_type>::backward_kernel(base_layer_t<value_type>* b) {
 
 template <class value_type>
 void network_t<value_type>::forward_test(network_stage stage, base_layer_t<value_type>* b, std::vector<value_type>* acc) {
-    
+    // Register with tensor reuse that we need more tensors. 
+      // register_test_tensors(); 
 //NEED REPLACE the data layer in net_comp_route!!!!
     std::vector<std::pair<int, net_comp> > net_test_route = reg->get_net_test_route();
     std::map<int, void* > net_layers  = reg->get_net_layers();
@@ -261,7 +264,7 @@ void network_t<value_type>::forward_test(network_stage stage, base_layer_t<value
             mem_controller.stash_tensor( layer_id, FORWARD , NET_INFER, compressor);
             
             base_layer_t<value_type>* b = (base_layer_t<value_type>*) net_layers.find(layer_id)->second;
-            compressor.trigger_compress();
+            // compressor.trigger_compress();
 	    *acc = b->forward(stage, &cublas_handle, &cudnn_handle, reg);
             
             // update tensors
@@ -269,6 +272,7 @@ void network_t<value_type>::forward_test(network_stage stage, base_layer_t<value
         }
     }
     mem_controller.reset_tensor_state();
+    // free_test_tensors();
 }
 
 // Setup forward in a network and add layers to registry based on the DAG.

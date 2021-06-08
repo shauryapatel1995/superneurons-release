@@ -9,6 +9,8 @@
 #include <condition_variable> 
 #include <chrono>
 #include <unordered_set>
+#include <cuda_runtime_api.h>
+#include <cuda.h>
 
 typedef std::chrono::steady_clock Clock;
 
@@ -19,20 +21,23 @@ template <class value_type>
 class Compressor { 
 
 private:
-	std::mutex queue_lock, d_queue_lock;
-	std::condition_variable c, d, c_empty;
-	std::queue<tensor_t<value_type>* > compression_queue;
+	std::mutex queue_lock, d_queue_lock, free_queue_lock;
+	std::condition_variable c, d, c_empty, f;
+	std::queue<tensor_t<value_type>* > compression_queue, free_queue;
 	std::queue<tensor_t<value_type>* > decompression_queue;
 	std::stack<tensor_t<value_type>* > decompression_stack;
 	std::unordered_set<tensor_t<value_type> *> pending_tensors;
-	int compress_counter = 0, decompress_counter = 3; 
+	int compress_counter = 0, decompress_counter = 3, free_counter = 1; 
 	std::thread t1, t2, t3;
-        bool decompress = false; 
+        bool decompress = false;
+	cudaStream_t stream; 
 
 public:
 	Compressor() {
 		t1 = std::thread(&SuperNeurons::Compressor<value_type>::compress_tensor, this);	
-		t2 = std::thread(&SuperNeurons::Compressor<value_type>::decompress_tensor, this);
+	        t2 = std::thread(&SuperNeurons::Compressor<value_type>::decompress_tensor, this);
+		cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+		// t3 = std::thread(&SuperNeurons::Compressor<value_type>::free_tensor, this);	
 		// t2 = std::thread(&SuperNeurons::Compressor<value_type>::decompress_tensor, this);
 		// t2 = std::thread(&SuperNeurons::Compressor<value_type>::compress_tensor, this);
 		// t3 = std::thread(&SuperNeurons::Compressor<value_type>::compress_tensor, this);
@@ -76,6 +81,13 @@ public:
                 
 		c.notify_all();	
 	}
+
+	void trigger_free() {
+		std::lock_guard<std::mutex> lock(free_queue_lock);
+		if(!free_queue.empty())
+			free_counter++;
+		f.notify_all();
+	}
 	
 	// Start the decompress phase and stop the compress phase.
 	void start_decompress() {
@@ -85,8 +97,12 @@ public:
 		if(!compression_queue.empty()) {
 			c_empty.wait(lock);
 		}
+		if(!free_queue.empty()) {
+			free_counter += free_queue.size();
+			f.notify_all();
+		}
 		decompress = true;
-		decompress_counter = 3; 
+		decompress_counter = 1; 
 		c.notify_all();	
 		lock.unlock();
 	}
@@ -101,8 +117,8 @@ public:
 		while(true) {
 			tensor_t<value_type> * t = nullptr;
 			std::unique_lock<std::mutex> lock(queue_lock);
-                        auto t3 = Clock::now();
-			while(compression_queue.empty() || decompress || !compress_counter) {
+			// while(compression_queue.empty() || decompress || !compress_counter) {
+			while(compression_queue.empty() || decompress) {
 				//printf("Sleeping compression queue size is %d and decompress is %d\n", compression_queue.size(), decompress);
 				// printf("Compress counter is %d\n");
 				if(compression_queue.empty())
@@ -114,19 +130,38 @@ public:
 			compress_counter--;
 			// printf("Size of compression queue %d\n", compression_queue.size());
 			decompression_stack.push(t);
+			// free_queue.push(t);
 			lock.unlock();
-                        auto t4 = Clock::now();
                         // printf("Time compression thread slept %d ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count());
 			if(t != nullptr) { 
-                                auto t1 = Clock::now();
 				// decompression_stack.push(t);
 				// pending_tensors.insert(t);
-				t->compress();
-				auto t2 = Clock::now();
+				 t->compress();
+				/* checkCudaErrors( cudaMemcpyAsync((void*) t->get_cpu_ptr(), (void*) t->get_gpu_ptr(), t->get_mem_size(), cudaMemcpyDeviceToHost, stream));
+				cudaStreamSynchronize(stream);  	
+				t->free_gpu_space(GPU_COM);*/	
 				// printf("Time taken in compression %d micros\n", std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count());
+				// printf("Compress queue size: %d\n", compression_queue.size());
 			}
 		}
 	
+	}
+
+	void free_tensor() {
+		while(true) {
+			tensor_t<value_type> *t = nullptr;
+			std::unique_lock<std::mutex> lock(free_queue_lock);
+			while(free_queue.empty() || decompress || !free_counter) {
+				f.wait(lock);
+			}	
+			free_counter--;
+			t = free_queue.front(); free_queue.pop();
+			printf("Freeing memory\n");
+			if(t != nullptr) {
+				t->free_gpu_space(GPU_COM);
+			}
+		}
+
 	}
 
 	void decompress_tensor() {
@@ -145,9 +180,12 @@ public:
                         auto t4 = Clock::now();
                         // printf("Time compression thread slept %d ms\n", std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count());
 			if(t != nullptr) { 
-                                auto t1 = Clock::now();
-				t->decompress();
-				auto t2 = Clock::now();
+				  t->decompress();
+				  /* t->stash_gpu_space();
+				  // cudaMalloc(&(t->get_gpu_ptr()), t->get_mem_size());
+				 checkCudaErrors( cudaMemcpyAsync((void*) t->get_gpu_ptr(), (void*) t->get_cpu_ptr(), t->get_mem_size(), cudaMemcpyHostToDevice, stream));
+                                cudaStreamSynchronize(stream);
+                               	 t->atomic_set_state(GPU_FUL); */
 				// printf("Time taken in decompression %d micros\n", std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count());
 			}
 		}	

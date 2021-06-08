@@ -16,15 +16,15 @@ namespace SuperNeurons {
  
 
 inline size_t query_free_mem() {
-#ifdef BLASX_MALLOC
+/*#ifdef BLASX_MALLOC
     size_t mem_free = blasx_gpu_singleton::get_blasx_gpu_malloc_t(0)->free_size;
     return mem_free;
-#else
+#else*/
     size_t mem_tot_0 = 0;
     size_t mem_free_0 = 0;
     cudaMemGetInfo(&mem_free_0, &mem_tot_0);
     return mem_free_0;
-#endif
+//#endif
 }
 
 inline size_t query_used_mem() {

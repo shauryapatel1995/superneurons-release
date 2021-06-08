@@ -35,7 +35,8 @@ typedef enum TENSOR_TYPE {
     AUX         = 3,
     BN_MEAN_VAR = 4,
     CONV_BUFF   = 5,
-    DATA_SOURCE = 6
+    DATA_SOURCE = 6,
+    ACTIVATION_DATA = 7
 }TENSOR_TYPE;
 
     
@@ -44,6 +45,7 @@ class tensor_t {
 private:
     std::atomic<int> state;
     std::mutex state_lock;
+    reusable_gpu_space * reusable_space = NULL; 
     std::condition_variable compress_decompress_signal;
  
     TENSOR_TYPE    data_t;
@@ -111,12 +113,13 @@ private:
     
 public:
 
+    bool is_activation;
     void atomic_set_state(int m);
     void compress();
     void decompress();
     int hit_cnt = 0, miss_cnt = 0, into_cnt = 0;
 
-    tensor_t(size_t n, size_t c, size_t h, size_t w, std::vector<tensor_t<value_type>* >* reg, TENSOR_TYPE dtype, int layer_id):tensor_id(tensor_counter) {
+    tensor_t(size_t n, size_t c, size_t h, size_t w, std::vector<tensor_t<value_type>* >* reg, TENSOR_TYPE dtype, int layer_id,bool activation = false):tensor_id(tensor_counter) {
         assert(n >= 1);
         assert(c >= 1);
         assert(h >= 1);
@@ -156,6 +159,7 @@ public:
             //cuFFT only gives half of the freq info
             const size_t freq_size = total_size / 2 + 1;
             CHECK_EQ( cudaMalloc((void**)&(this->freq_ptr), sizeof(cufftComplex)*total_size), cudaSuccess);
+	    printf("Acquring %zu for grad\n", sizeof(cufftComplex)*total_size);
             CHECK_NOTNULL(this->freq_ptr);
             CHECK_EQ( cufftPlan1d(&fft_plan_f, total_size, CUFFT_R2C, 1), CUFFT_SUCCESS );
             CHECK_EQ( cufftPlan1d(&fft_plan_b, total_size, CUFFT_C2R, 1), CUFFT_SUCCESS );
@@ -164,12 +168,17 @@ public:
 #ifdef LIVENESS
 	// cudaStreamCreate(&stream);
 	// Liveness activated then don't save memory for Data or conv on gpus.
+	is_activation = activation;
         if(this->data_t != CONV_BUFF && this->data_t != DATA ) {
             acquireSpaceGPU(n*c*h*w);
         }
 	// Save memory for anything but CONV on CPU.
         if( this->data_t != CONV_BUFF ) acquireSpaceCPU(n*c*h*w);
-
+	
+	// Register reusable space size 
+	if( this->data_t == DATA && activation) {
+		register_reusable_space(n*c*h*w*sizeof(value_type));
+	}
         /*if(this->data_t == DATA) {
 	    // Setup memory for compressed tensor. 
             update_reusable_buffer_size((total_size*sizeof(value_type))/ 5); 
@@ -251,18 +260,20 @@ public:
     // Reserve space for tensor in the reusable buffer space.
     void reserve_space_for_compression() {
             // Setup memory for compressed tensor. 
-            update_reusable_buffer_size((this->N*this->C*this->H*this->W*sizeof(value_type))/ 5); 
+            update_reusable_buffer_size((this->N*this->C*this->H*this->W*sizeof(value_type))/ 5);
+	    printf("Tensor size: %zu\n",(this->N*this->C*this->H*this->W*sizeof(value_type)));  
 	    void * gpu_ptr; 
 	    checkCudaErrors(cudaMalloc(&gpu_ptr, this->N*this->C*this->H*this->W*sizeof(value_type)));
 	    // acquireSpaceGPU(n*c*h*w); 
             // Setup zfp values to obtain maximum buf size among all tensors.
-            this->field = zfp_field_3d((void *)gpu_ptr, zfp_type_float, this->N*this->C, this->H, this->W);
+            this->field = zfp_field_3d((void *)gpu_ptr, zfp_type_float, this->N, this->C, this->H * this->W);
             this->zfp = zfp_stream_open(NULL);
-            zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
+            zfp_stream_set_rate(zfp, 6, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
             size_t bufsize = zfp_stream_maximum_size(this->zfp, this->field);
             
 	    max_buffer_size(bufsize);
             checkCudaErrors(cudaFree(gpu_ptr));
+	    gpu_ptr = NULL;
             zfp_field_free(this->field);
     }
     /**

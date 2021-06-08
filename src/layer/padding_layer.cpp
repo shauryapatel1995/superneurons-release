@@ -32,7 +32,7 @@ void padding_layer_t<value_type>::forward_setup(registry_t<value_type> *reg, cud
 
     tensor_t<value_type> *f_out = new tensor_t<value_type>(output_tensor_dim[0], output_tensor_dim[1],
                                                            output_tensor_dim[2], output_tensor_dim[3],
-                                                           reg->get_vector(), DATA, this->get_id());
+                                                           reg->get_vector(), DATA, this->get_id(), false);
 
     //setup the output tensor
     this->set_f_out(f_out, reg);

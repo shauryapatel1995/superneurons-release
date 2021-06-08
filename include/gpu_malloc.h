@@ -5,6 +5,7 @@
 //#include <blasx_common.h>
 #include <util/common.h>
 #include <map>
+#include <queue> 
 
 #define BLASX_GPU_MEM_MAX_SEGMENT    200
 #define BLASX_GPU_INIT_MEM 1000000*50
@@ -27,6 +28,15 @@ typedef struct gpu_malloc_s {
     int                  max_segment;          /* Maximum number of segment */
 } blasx_gpu_malloc_t;
 
+// Class to reuse memory space using graph coloring.
+class reusable_gpu_space {
+	public:
+	void * gpu_ptr; 
+	int tensor_counter; 
+
+};
+
+
 blasx_gpu_malloc_t* blasx_gpu_malloc_init(int GPU_id);
 void   blasx_gpu_malloc_fini(blasx_gpu_malloc_t* gdata, int GPU_id);
 void*  blasx_gpu_malloc(blasx_gpu_malloc_t *gdata, size_t nbytes);
@@ -37,10 +47,15 @@ void   update_reusable_pointer(int zfp_size);
 void   update_reusable_buffer_size(int tensor_size);
 void   max_buffer_size(int buf_size);
 void   delete_compressed_tensor(int delete_size);
+void*   acquire_reusable_gpu_space();
+void   free_reusable_gpu_space(reusable_gpu_space *);
+void   register_reusable_space(size_t size);
+void   register_test_tensors();
+void   free_test_tensors();
+
 class blasx_gpu_singleton {
 private:
     std::map<int, blasx_gpu_malloc_t*> malloc_gpus;
-
     blasx_gpu_singleton() {
 
     }
@@ -77,6 +92,7 @@ public:
         delete instance;
     }
 };
+
 
 #endif /* GPU_MALLOC_H */
 

@@ -10,13 +10,13 @@ int main(int argc, char **argv) {
     char *train_image_bin;
     char *test_label_bin;
     char *test_image_bin;
-//    char *checkpoint;
+    char *checkpoint;
 
 //    train_mean_file = (char *) "/home/ay27/dataset/bin_file/imgnet_train.mean";
-    train_image_bin = (char *) "/home/ay27/dataset/bin_file/train_data_0.bin";
+/*    train_image_bin = (char *) "/home/ay27/dataset/bin_file/train_data_0.bin";
     train_label_bin = (char *) "/home/ay27/dataset/bin_file/train_label_0.bin";
     test_image_bin  = (char *) "/home/ay27/dataset/bin_file/val_data_0.bin";
-    test_label_bin  = (char *) "/home/ay27/dataset/bin_file/val_label_0.bin";
+    test_label_bin  = (char *) "/home/ay27/dataset/bin_file/val_label_0.bin";*/
 //    checkpoint_file = (char *) "/home/ay27/dataset/bin_file/alexnet_checkpoint";
 
 //    train_image_bin = (char *) "/home/wwu/DeepLearning/data/imgnet/imgnet_val_data_0.bin";
@@ -24,11 +24,18 @@ int main(int argc, char **argv) {
 //    test_image_bin  = (char *) "/home/wwu/DeepLearning/data/imgnet/imgnet_val_data_0.bin";
 //    test_label_bin  = (char *) "/home/wwu/DeepLearning/data/imgnet/imgnet_val_label_0.bin";
 //    checkpoint      = (char *) "/uac/ascstd/jmye/storage/superneurons/val100/checkpoint";
+	
+    // train_mean_file = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/train_mean.bin";
+    train_image_bin = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_data_0.bin";
+    train_label_bin = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_label_0.bin";
+    test_image_bin  = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_data_0.bin";
+    test_label_bin  = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_label_0.bin";
+    checkpoint = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/alexnet_checkpoint";
 
-
+    bool do_compress = atoi(argv[2]);
     base_solver_t<float>* solver = (base_solver_t<float>*) new nesterov_solver_t<float>(0.01, 0.0005, 0.9);
     solver->set_lr_decay_policy(ITER, {100000, 200000, 300000}, {0.001, 0.0001, 0.00001});
-    network_t<float> n(solver);
+    network_t<float> n(solver, do_compress);
 
 //    network_saver* saver = new network_saver_impl<float>(checkpoint, n.get_registry());
 //    install_signal_processor(saver);
@@ -47,7 +54,7 @@ int main(int argc, char **argv) {
     float channel_mean[3] = {103.939, 116.779, 123.68};
 
     base_preprocess_t<float> *mean_sub =
-            (base_preprocess_t<float> *) new mean_subtraction_t<float>(batch_size, C, H, W, channel_mean);
+            (base_preprocess_t<float> *) new mean_subtraction_t<float>(batch_size, C, 256, 256, channel_mean);
 
     preprocessor<float> *processor = new preprocessor<float>();
     processor->add_preprocess(mean_sub)
@@ -234,8 +241,10 @@ int main(int argc, char **argv) {
     // testing every epoch
     printf("total iteration: %zu, test interval : %zu\n", (train_imgs/batch_size)*100, train_imgs/batch_size);
 //    n.train((train_imgs/batch_size)*100, tracking_window, tracking_window);
-    n.train(10, 100, 100);
+    n.train(20000, 100, 100);
+    // n.train(4, 100, 100);
 
 //    saver->save();
+	 cudaDeviceReset();
 }
 

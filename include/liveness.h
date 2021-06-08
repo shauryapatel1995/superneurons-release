@@ -128,7 +128,7 @@ public:
 
     void stash(int layer_id, net_comp dir, Compressor<value_type>& compressor);
 
-    void update(int layer_id, net_comp dir, Compressor<value_type>& compressor);
+    void update(int layer_id, net_comp dir, network_stage stage, Compressor<value_type>& compressor);
 };
 
 

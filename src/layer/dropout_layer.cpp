@@ -27,7 +27,7 @@ void dropout_layer_t<value_type>::forward_setup(registry_t<value_type>* reg, cud
     size_t buff_size = buff_size_bytes / sizeof(value_type);
     dropout_buff = new tensor_t<value_type>(buff_size, 1, 1, 1, reg->get_vector(), PARAM, this->get_id());
     
-    tensor_t<value_type>* f_out  = new tensor_t<value_type>( input->get_N(), input->get_C(), input->get_H(), input->get_W(), reg->get_vector(), DATA, this->get_id());
+    tensor_t<value_type>* f_out  = new tensor_t<value_type>( input->get_N(), input->get_C(), input->get_H(), input->get_W(), reg->get_vector(), DATA, this->get_id(), false);
     //setup the output tensor
     this->set_f_out( f_out, reg );
     

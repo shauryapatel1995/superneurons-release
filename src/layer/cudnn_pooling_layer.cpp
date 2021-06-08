@@ -29,7 +29,7 @@ void pool_layer_t<value_type>::forward_setup(registry_t<value_type>* reg, cudnnH
                                                   &output_tensor_dim[2],
                                                   &output_tensor_dim[3]) );
     
-    tensor_t<value_type>* f_out  = new tensor_t<value_type>(output_tensor_dim[0], output_tensor_dim[1], output_tensor_dim[2], output_tensor_dim[3], reg->get_vector(), DATA, this->get_id());
+    tensor_t<value_type>* f_out  = new tensor_t<value_type>(output_tensor_dim[0], output_tensor_dim[1], output_tensor_dim[2], output_tensor_dim[3], reg->get_vector(), DATA, this->get_id(), false);
     this->set_f_out( f_out, reg );
     
     //make sure all the necessary tensors are properly set

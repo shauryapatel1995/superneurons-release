@@ -6,6 +6,7 @@
 #include "zfp.h"
 #include <cuda_runtime_api.h>
 #include <cuda.h>
+#include <gpu_malloc.h>
 #include <chrono>
 
 typedef std::chrono::steady_clock Clock;
@@ -128,15 +129,15 @@ void tensor_t<value_type>::compress() {
     if(true) {
 	 
          // this->field = zfp_field_1d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C * this->H * this->W);
-        this->field = zfp_field_3d((void *)this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
+        this->field = zfp_field_3d((void *)this->gpu_ptr, zfp_type_float, this->N , this->C, this->H * this->W);
 	// printf("Current size: %d", sizeof(float)*this->N*this->C*this->H*this->W);
         this->zfp = zfp_stream_open(NULL);                  // compressed stream and parameters
         // zfp->maxbits = ZFP_MAX_BITS;
-        zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
+        zfp_stream_set_rate(zfp, 6, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false);
 	// TODO - This should be precalculated.
 	size_t bufsize = zfp_stream_maximum_size(this->zfp, this->field);  
 	
-	void* buffer; 
+	 void* buffer; 
 	// checkCudaErrors(cudaMalloc(&buffer, bufsize));                 
 	buffer = acquire_reusable_buffer(bufsize);
         // associate bit stream with allocated buffer
@@ -159,15 +160,17 @@ void tensor_t<value_type>::compress() {
                        (void *) buffer,
                    zfpsize, cudaMemcpyDeviceToDevice));
 	          checkCudaErrors(cudaFree(buffer)); */
+		
 		// printf("compress tensor %p layer %d gpu %p  curt: %d\n", this, this->get_layer_id(), gpu_ptr, get_state());
 		 this->compressed_gpu_ptr = buffer; 
 		 update_reusable_pointer(this->compressed_size);
-		 stream_close(stream);
+		 stream_close(stream); 
 	} else {
 		printf("Cuda not available!\n");
 	}
     } 
     // free gpu space
+    // TODO - If we have a memory pool, remove this. 
     freeSpaceGPU(GPU_COM);
     // checkCudaErrors(cudaFree((void *) this->gpu_ptr));
     // this->gpu_ptr = NULL;
@@ -207,16 +210,16 @@ void tensor_t<value_type>::decompress() {
     
     acquireSpaceGPU(decompress_size);	
     // cudaMalloc(&this->gpu_ptr, sizeof(float)*decompress_size);
-    this->field = zfp_field_3d(this->gpu_ptr, zfp_type_float, this->N * this->C, this->H, this->W);
-    zfp_stream_set_rate(zfp, 5, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false); 
+    this->field = zfp_field_3d(this->gpu_ptr, zfp_type_float, this->N, this->C, this->H * this->W);
+    zfp_stream_set_rate(zfp, 6, zfp_type_float, zfp_field_dimensionality(this->field), zfp_false); 
     int bufsize = zfp_stream_maximum_size(zfp, field);
-    // void * buffer;
-    // cudaMalloc(&buffer, bufsize);                           // storage for compressed stream   
+    /* void * buffer;
+     cudaMalloc(&buffer, bufsize);                           // storage for compressed stream   
     // buffer = acquire_decompress_reusable_buffer(bufsize);
-     // checkCudaErrors(cudaMemcpy((void *) buffer, (void *) this->compressed_gpu_ptr, this->compressed_size, cudaMemcpyDeviceToDevice));
+     checkCudaErrors(cudaMemcpy((void *) buffer, (void *) this->compressed_gpu_ptr, this->compressed_size, cudaMemcpyDeviceToDevice));
     
 
-    //  bitstream* stream = stream_open(buffer, bufsize);         // bit stream to compress to
+     bitstream* stream = stream_open(buffer, bufsize);         // bit stream to compress to*/
     bitstream* stream = stream_open(this->compressed_gpu_ptr, bufsize);         // bit stream to compress to
     zfp_stream_set_bit_stream(zfp, stream);                   // associate with compressed stream
     zfp_stream_rewind(zfp);                                   // rewind stream to beginning    
@@ -225,9 +228,9 @@ void tensor_t<value_type>::decompress() {
     	if(!zfp_decompress(zfp, field)){
             printf("The decompression was unsuccessful\n");
 	}
-         // checkCudaErrors(cudaFree(buffer));
-   	 // checkCudaErrors(cudaFree(this->compressed_gpu_ptr)); 
-        delete_compressed_tensor(this->compressed_size); 
+         /*  checkCudaErrors(cudaFree(buffer));
+   	   checkCudaErrors(cudaFree(this->compressed_gpu_ptr)); */
+          delete_compressed_tensor(this->compressed_size); 
     } else {
 	printf("Decompression not possible\n");
     } 
@@ -261,12 +264,12 @@ void tensor_t<value_type>::CPUtoGPU() {
         into_cnt += 1;
     }
 
-    /* if(this->data_t == DATA && (this->get_state() == GPU_COM || this->get_state() == GPU_WORK)) {
+     /* if(this->data_t == DATA && (this->get_state() == GPU_COM || this->get_state() == GPU_WORK)) {
         // compressed tensor use decompress.
          
         this->decompress();
         return; 
-    } */
+    }  */
 
     if (this->get_state() == GPU_FUL) {
         if (data_t == DATA) {
@@ -314,6 +317,7 @@ void tensor_t<value_type>::CPUtoGPU() {
     this->atomic_set_state(GPU_FUL);
 
 #ifdef LRU_ON
+    printf("Updating list after swap state is %d\n", this->get_state());
     if (this->get_type() == DATA) {
         lru->update(this);
     }
@@ -676,14 +680,26 @@ void tensor_t<value_type>::acquireSpaceGPU(long total) {
         return;
     }
     assert( total > 0 );
-
+    
+     if(is_activation) {
+	// printf("Activation tensor being allocated\n");
+    }
+     
+    if(this->data_t == DATA && is_activation) {
+	this->reusable_space = (reusable_gpu_space *)acquire_reusable_gpu_space();
+	this->gpu_ptr = (value_type *)reusable_space->gpu_ptr; 
+	reusable_space->tensor_counter = 1;
+	return; 
+    } 
+     
 //    printf("before malloc %zu byte\n", query_free_mem());
-    gmalloc(gpu_malloc, &(this->gpu_ptr), sizeof(value_type)*total);
+    // if(this->gpu_ptr != NULL)
+	    gmalloc(gpu_malloc, &(this->gpu_ptr), sizeof(value_type)*total);
 //    printf("after malloc %zu byte\n", query_free_mem());
 
     if (this->gpu_ptr != NULL) {
         this->atomic_set_state(GPU_NIL);
-    }
+    } 
 
     if (data_t != DATA && data_t != CONV_BUFF) {
         return;
@@ -702,40 +718,43 @@ void tensor_t<value_type>::acquireSpaceGPU(long total) {
 //        miss_cnt += 1;
 //    }
 
+    // while (this->gpu_ptr == NULL || query_used_mem() > 650000000) {
     while (this->gpu_ptr == NULL) {
-        printf("LRU start!! tensor %p, current free memory %zu\n", this, query_free_mem());
-        lru->print_list();
+	// printf("Current used memory %zu\n", query_used_mem());
+        // printf("LRU start!! tensor %p, current free memory %zu\n", this, query_free_mem());
+        // lru->print_list();
+        printf("Swapping \n");
         int x = 0;
         while (lru->get_item(x) != NULL) {
             tensor_t<value_type>* t = (tensor_t<value_type>*)lru->get_item(x)->item;
-            printf("tensor %p layer %d\n", t, t->get_layer_id());
+            // printf("tensor %p layer %d\n", t, t->get_layer_id());
             x += 1;
         }
 	// TODO - Possible code change here to move to compressed.
         // kick out some tensors in LRU
         tensor_t<value_type> *t = (tensor_t<value_type> *) (lru->remove_oldest());
         if (t == NULL) {
-            lru->print_list();
+            // lru->print_list();
             fprintf(stderr, "LRU NULL !!! Can not alloc GPU memory !!!! tensor %p need %zu free %zu\n", this, total, query_free_mem());
             exit(-1);
         }
-        printf("kick out tensor %p layer %d\n", t, t->get_layer_id());
+        // printf("kick out tensor %p layer %d\n", t, t->get_layer_id());
         if (t->get_state() == GPU_FUL) {
             t->GPUtoCPU();
             t->free_gpu_space(CPU);
         } else {
             fprintf(stderr, "Found a not GPU tensor in LRU %p\n", t);
             fprintf(stderr, "tensor: %p, layer %d type: %d, state: %d\n", t, t->get_layer_id(), t->get_type(), t->get_state());
-            lru->print_list();
+            // lru->print_list();
             exit(-1);
         }
 
-//#ifdef DEBUG
+#ifdef DEBUG
         printf("kick out oldest? \n");
-        lru->print_list();
-//#endif
-
-        gmalloc(gpu_malloc, &(this->gpu_ptr), sizeof(value_type) * total);
+        // lru->print_list();
+#endif
+	// if(gpu_ptr == NULL)
+	gmalloc(gpu_malloc, &(this->gpu_ptr), sizeof(value_type) * total);
     }
 
     if (this->gpu_ptr != NULL) {
@@ -753,18 +772,32 @@ void tensor_t<value_type>::acquireSpaceGPU(long total) {
 
 template <class value_type>
 void tensor_t<value_type>::freeSpaceGPU(mem_mode target) {
+    // if(!is_activation) 
+	// return; 
     if (this->cpu_ptr == NULL) {
         this->atomic_set_state(VOID);
     } else {
         this->atomic_set_state(target);
     }
-
+	
+   
     if (gpu_ptr == NULL) {
 	// printf("Null gpu ptr encountered\n");
         return;
     }
-
-	
+    
+    if(is_activation) {
+	// printf("Activation tensor being freed\n");
+	 return;
+    }
+    
+    if(this->data_t == DATA && is_activation) {
+ 	free_reusable_gpu_space(this->reusable_space);
+	this->reusable_space = NULL;
+	this->gpu_ptr = NULL;
+	return; 
+    }
+	// return; 	
     // printf("free tensor %p layer %d gpu %p  curt: %d target: %d\n", this, this->get_layer_id(), gpu_ptr, get_state(), target);
 
     if(gpu_ptr != NULL) {

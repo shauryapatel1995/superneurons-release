@@ -338,9 +338,9 @@ int main(int argc, char **argv) {
 
 
 #ifdef BLASX_MALLOC
-    parallel_reader_t<float> reader2(test_image_bin, test_label_bin, 2, batch_size, processor, 2, 2);
+    parallel_reader_t<float> reader2(test_image_bin, test_label_bin, 2, batch_size, C,H ,W ,processor, 2, 2);
     base_layer_t<float> *data_2 = (base_layer_t<float> *) new data_layer_t<float>(DATA_TEST, &reader2);
-    parallel_reader_t<float> reader1(train_image_bin, train_label_bin, 2, batch_size, processor, 2, 2);
+    parallel_reader_t<float> reader1(train_image_bin, train_label_bin, 2, batch_size,C ,H ,W ,processor, 2, 2);
     base_layer_t<float> *data_1 = (base_layer_t<float> *) new data_layer_t<float>(DATA_TRAIN, &reader1);
 #else
     parallel_reader_t<float> reader2(test_image_bin, test_label_bin, 2, batch_size, C, H, W, processor, 1, 1);

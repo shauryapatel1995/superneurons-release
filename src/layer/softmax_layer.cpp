@@ -24,7 +24,7 @@ void softmax_layer_t<value_type>::forward_setup( registry_t<value_type>* reg, cu
     int curt_l  = this->get_id();
     tensor_t<value_type>* t_in = reg->get_reg_output(input_l, curt_l);
 
-    tensor_t<value_type>* t_out = new tensor_t<value_type>(t_in->get_N(), t_in->get_C(), t_in->get_H(), t_in->get_W(), reg->get_vector(), DATA, this->get_id());
+    tensor_t<value_type>* t_out = new tensor_t<value_type>(t_in->get_N(), t_in->get_C(), t_in->get_H(), t_in->get_W(), reg->get_vector(), DATA, this->get_id(), false);
 
     assert(t_in != NULL);
     this->set_f_out( t_out, reg ); //use the inplace operation.

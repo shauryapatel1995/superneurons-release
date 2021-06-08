@@ -52,6 +52,8 @@ bool liveness_analysis_t<value_type>::is_freeable_afterwards(int curt_layer_id, 
 
 template<class value_type>
 bool liveness_analysis_t<value_type>::is_compressible_afterwards(int curt_layer_id, tensor_t<value_type> *t) {
+    if(!t->is_activation) 
+	return false; 
     int i = 0; 
     net_comp dir = FORWARD;
     // printf("Checking compressible for layer %d\n", curt_layer_id);
@@ -338,7 +340,7 @@ void liveness_analysis_t<value_type>::stash(int layer_id, net_comp dir, Compress
             // Check t state if it is in compression wait till it decompresses. 
             // If it is compressed put it to the queue and then wait.
             if(dir == BACKWARD && (t->get_state() == GPU_COM || t->get_state() == GPU_WORK)) {
-		while(dir == BACKWARD && (t->get_state() == GPU_COM || t->get_state() == GPU_WORK)) {
+		while(t->get_state() == GPU_COM || t->get_state() == GPU_WORK) {
 			// waiting for decompress to finish.
 			// printf("I am stuck\n");
 	    	} 
@@ -363,7 +365,7 @@ void liveness_analysis_t<value_type>::stash(int layer_id, net_comp dir, Compress
 }
 
 template<class value_type>
-void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir, Compressor<value_type>& compressor) {
+void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir, network_stage stage, Compressor<value_type>& compressor) {
     //    // we only do free and offload to cpu here
 //    typename std::map<tensor_t<value_type>*, mem_mode>::iterator it = regulated_tensors.begin();
 //    for ( it = regulated_tensors.begin(); it != regulated_tensors.end(); it++ ) {
@@ -395,7 +397,7 @@ void liveness_analysis_t<value_type>::update(int layer_id, net_comp dir, Compres
         outs = (std::vector<std::vector<tensor_t<value_type> *> > *) &b_free_tensors;
     }
     
-    if(dir == FORWARD && do_compress) {
+    if(dir == FORWARD && do_compress && stage == NET_TRAIN) {
         for (auto it = compress_tensors->operator[](layer_id).begin(); it != compress_tensors->operator[](layer_id).end(); ++it) {
             tensor_t<value_type> *t = *it;
 	    // t->compress();

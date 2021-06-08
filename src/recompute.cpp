@@ -483,6 +483,7 @@ void recompute_t<value_type>::upload_to_reconstruct(int layer_id, net_comp dir, 
     if (dir == FORWARD) return;
 
     if (should_recompute[layer_id]) {
+	printf("Recompute\n");
         recompute_for_dependency(layer_id, stage);
     }
 }

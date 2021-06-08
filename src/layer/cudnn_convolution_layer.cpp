@@ -398,7 +398,7 @@ void conv_layer_t<value_type>::forward_setup(registry_t<value_type>* reg, cudnnH
                                                       t_output_dim) );
     //create output tensor
     tensor_t<value_type> *t_out = new tensor_t<value_type>(t_output_dim[0], t_output_dim[1], t_output_dim[2],
-                                                           t_output_dim[3], reg->get_vector(), DATA, this->get_id());
+                                                           t_output_dim[3], reg->get_vector(), DATA, this->get_id(), true);
     this->set_f_out(t_out, reg);
     //create bias tensor
     tensor_t<value_type> *bias = new tensor_t<value_type>(1, weight->get_N(), 1, 1, reg->get_vector(), PARAM,

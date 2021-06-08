@@ -170,24 +170,30 @@ int main(int argc, char **argv) {
 //    char *checkpoint;
 
 //    train_mean_file = (char *) "/home/ay27/dataset/299/imgnet_train.mean";
-    train_image_bin = (char *) "/home/ay27/dataset/299/val_data_0.bin";
+    /*train_image_bin = (char *) "/home/ay27/dataset/299/val_data_0.bin";
     train_label_bin = (char *) "/home/ay27/dataset/299/val_label_0.bin";
     test_image_bin  = (char *) "/home/ay27/dataset/299/val_data_0.bin";
-    test_label_bin  = (char *) "/home/ay27/dataset/299/val_label_0.bin";
+    test_label_bin  = (char *) "/home/ay27/dataset/299/val_label_0.bin";*/
 //    checkpoint = (char*) "/storage/dataset/imagenet2012/299/checkpoint";
 //    train_mean_file = (char *) "/home/wwu/DeepLearning/data/cifar/cifar10_train_image.mean";
 //    train_image_bin = (char *) "/home/wwu/DeepLearning/data/cifar/cifar10_train_image_0.bin";
 //    train_label_bin = (char *) "/home/wwu/DeepLearning/data/cifar/cifar10_train_label_0.bin";
 //    test_image_bin  = (char *) "/home/wwu/DeepLearning/data/cifar/cifar10_test_image_0.bin";
 //    test_label_bin  = (char *) "/home/wwu/DeepLearning/data/cifar/cifar10_test_label_0.bin";
+    // train_mean_file = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/train_mean.bin";
+    train_image_bin = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_data_0.bin";
+    train_label_bin = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/data_train_label_0.bin";
+    test_image_bin  = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_data_0.bin";
+    test_label_bin  = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/val_bin/data_val_label_0.bin";
+    // checkpoint_file = (char *) "/mnt/nfs/scratch1/shauryakamle/image-net/train_bin/alexnet_checkpoint";
     const size_t batch_size = static_cast<const size_t>(atoi(argv[1])); //train and test must be same
 
-    const size_t C=3, H=299, W=299;
+    const size_t C=3, H=256, W=256;
 
     float channel_mean[3] = {104, 117, 123};
 
     preprocessor<float>* p = new preprocessor<float>();
-    p->add_preprocess(new mean_subtraction_t<float>(batch_size, C, H, W, channel_mean));
+    p->add_preprocess(new mean_subtraction_t<float>(batch_size, C, 256, 256, channel_mean));
 //     ->add_preprocess(new border_padding_t<float>(batch_size, C, H, W, 4, 4))
 //     ->add_preprocess(new random_crop_t<float>(batch_size, C, H+8, W+8, batch_size, C, H, W))
 //     ->add_preprocess(new random_flip_left_right_t<float>(batch_size, C, H, W));

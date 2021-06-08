@@ -321,9 +321,11 @@ public:
             double iter_start = get_cur_time();
             /*--network calculation--*/
 	    compressor.start_compress();
+	    printf("Forward\n");
 	    loss = forward(NET_TRAIN);
             // Wake up decompressor thread for backward.
             compressor.start_decompress();
+	    printf("Backward\n");
 	    backward();
             update(i);
             //backward_with_update(i);

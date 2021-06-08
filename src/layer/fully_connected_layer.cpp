@@ -104,7 +104,7 @@ void fully_connected_layer_t<value_type>::forward_setup( registry_t<value_type>*
     this->bias_multiplier = bias_multiplier;
     
     //setup output tensor
-    tensor_t<value_type>* output  = new tensor_t<value_type>(N, output_dim, 1, 1, reg->get_vector(), DATA, this->get_id());
+    tensor_t<value_type>* output  = new tensor_t<value_type>(N, output_dim, 1, 1, reg->get_vector(), DATA, this->get_id(), false);
     this->set_f_out(output, reg);
     
     assert( this->get_weight() != NULL );

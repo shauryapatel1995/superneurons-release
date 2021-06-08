@@ -11,7 +11,7 @@ void batch_normalization_layer_t<value_type>::forward_setup(registry_t<value_typ
     tensor_t<value_type>* input = reg->get_reg_output(input_l, curt_l);
     assert( input != NULL );
     
-    tensor_t<value_type>* f_out  = new tensor_t<value_type>( input->get_N(), input->get_C(), input->get_H(), input->get_W(), reg->get_vector(), DATA, this->get_id());
+    tensor_t<value_type>* f_out  = new tensor_t<value_type>( input->get_N(), input->get_C(), input->get_H(), input->get_W(), reg->get_vector(), DATA, this->get_id(), false);
     //setup the output tensor
     this->set_f_out( f_out, reg );
 
